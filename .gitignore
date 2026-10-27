@@ -16,3 +16,6 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .ipynb_checkpoints/
+
+# Tagger: clips hardlinked into the component folder
+apps/tagger_component/clips/

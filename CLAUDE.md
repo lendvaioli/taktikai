@@ -16,7 +16,7 @@ video -> detection (detections.parquet) -> pitch (positions.parquet) -> events (
 - tests/ pytest, mirrors src layout
 
 ## Commands
-make install | make test | make lint | make eval MATCH=<id> | make run STAGE=<stage> VIDEO=<path>
+make install | make test | make lint | make eval SET=<golden set> | make eval-compare A=<file> B=<file> | make tag | make run STAGE=<stage> VIDEO=<path>
 
 ## Rules
 - Numbers are computed by code. LLMs only interpret values returned by tools.

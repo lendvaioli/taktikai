@@ -1,0 +1,5 @@
+# Evaluation of predicted events against golden sets (see docs/GOLDEN.md).
+tolerance_sec: 2.0                                  # max |t_pred - t_golden| for a match
+golden_dir: evals/golden                            # written only by apps/tagger.py
+results_dir: evals/results                          # one JSON per run, committed as history
+predictions: data/processed/{clip_id}/events.json   # events stage output per clip

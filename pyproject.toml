@@ -14,6 +14,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+apps = [
+    "streamlit>=1.40",
+]
 ml = [
     "gdown>=5.2",
     "mplsoccer>=1.8",

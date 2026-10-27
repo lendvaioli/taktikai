@@ -1,8 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help install test lint eval run
+.PHONY: help install test lint eval eval-compare tag run
 
 help:
-	@echo "Targets: install | test | lint | eval MATCH=<id> | run STAGE=<stage> VIDEO=<path> [ARGS=...]"
+	@echo "Targets: install | test | lint | eval [SET=<golden set>] | eval-compare A=<file> B=<file>"
+	@echo "         tag | run STAGE=<stage> VIDEO=<path> [ARGS=...]"
 
 install:
 	uv sync --all-extras
@@ -15,7 +16,13 @@ lint:
 	uv run ruff format --check .
 
 eval:
-	@echo "eval MATCH=$(MATCH): not implemented yet"
+	uv run python -m match_tagger.evals.cli eval $(if $(SET),--set $(SET))
+
+eval-compare:
+	uv run python -m match_tagger.evals.cli compare $(A) $(B)
+
+tag:
+	uv run streamlit run apps/tagger.py
 
 run:
 	uv run python -m match_tagger.cli run --stage $(STAGE) --video $(VIDEO) $(ARGS)
