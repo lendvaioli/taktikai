@@ -1,0 +1,29 @@
+# Default pipeline configuration. One section per stage; values are added
+# together with the stage implementation. Stage-specific files live next to this one.
+
+# video:
+#   frame sampling and decoding parameters
+
+# detection:
+#   detector model and confidence thresholds
+
+# tracking:
+#   tracker parameters
+
+# pitch:
+#   pitch dimensions and calibration parameters
+
+# events:
+#   event detection thresholds
+
+# clips:
+#   clip padding and encoding parameters
+
+# metrics:
+#   metric definitions and parameters
+
+# report:
+#   report template and prompt version
+
+# evals:
+#   golden set location and matching tolerances
