@@ -131,7 +131,7 @@ def run_detection(video: Path, match_id: str, cfg: StageConfig) -> DetectionSumm
     refs, output_idx = processing_frames(read_meta(video), cfg.video)
     records, collector, votes = _detect_and_track(video, refs, output_idx, cfg, device, timer)
     start = time.perf_counter()
-    track_cls = votes.resolve()
+    track_cls = votes.resolve(cfg.tracking.class_vote.goalkeeper_min_share)
     records = apply_track_classes(records, track_cls)
     player_tracks = {tid for tid, cls in track_cls.items() if cls == "player"}
     records = label_teams(records, _classify_teams(collector, player_tracks, cfg, device))

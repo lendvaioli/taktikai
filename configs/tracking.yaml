@@ -4,6 +4,10 @@ bytetrack:
   lost_track_seconds: 2.0          # keep lost tracks this long before dropping them
   minimum_matching_threshold: 0.8
   minimum_consecutive_frames: 3    # as in roboflow/sports
+class_vote:
+  # A track becomes goalkeeper if goalkeeper votes reach this share of its summed confidence.
+  # Provisional: tuned on one 30 s clip (docs/EXPERIMENTS.md, 2026-10-27).
+  goalkeeper_min_share: 0.3
 team:
   embed_model: google/siglip-base-patch16-224
   crops_per_track: 10              # max crops embedded per player track

@@ -18,12 +18,22 @@ class ClassVotes:
         votes = self.weights[track_id]
         votes[cls] = votes.get(cls, 0.0) + conf
 
-    def resolve(self) -> dict[int, ObjectClass]:
-        """Return the class with the largest summed confidence per track.
+    def resolve(self, goalkeeper_min_share: float) -> dict[int, ObjectClass]:
+        """Return one class per track.
 
-        Ties go to the class seen first for that track.
+        A track is ``goalkeeper`` if goalkeeper votes reach ``goalkeeper_min_share`` of its
+        summed confidence: the detector often splits a keeper about evenly between goalkeeper
+        and player, so a plain majority would be a coin flip. Otherwise the class with the
+        largest summed confidence wins; ties go to the class seen first for that track.
         """
-        return {tid: max(votes, key=votes.__getitem__) for tid, votes in self.weights.items()}
+        resolved: dict[int, ObjectClass] = {}
+        for tid, votes in self.weights.items():
+            total = sum(votes.values())
+            if total > 0 and votes.get("goalkeeper", 0.0) / total >= goalkeeper_min_share:
+                resolved[tid] = "goalkeeper"
+            else:
+                resolved[tid] = max(votes, key=votes.__getitem__)
+        return resolved
 
 
 def apply_track_classes(

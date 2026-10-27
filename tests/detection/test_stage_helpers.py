@@ -75,6 +75,7 @@ def test_repo_configs_parse():
     assert load_config("video", VideoConfig).detect_fps == 12.5
     assert load_config("detection", DetectionConfig).conf == 0.3
     assert load_config("tracking", TrackingConfig).bytetrack.minimum_consecutive_frames == 3
+    assert load_config("tracking", TrackingConfig).class_vote.goalkeeper_min_share == 0.3
     assert str(load_config("default", DefaultConfig).paths.models_dir) == "models"
 
 
