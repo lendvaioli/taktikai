@@ -5,7 +5,7 @@ from match_tagger.config import DefaultConfig, load_config
 from match_tagger.detection.config import DetectionConfig
 from match_tagger.detection.detector import build_detector, class_lookup
 from match_tagger.detection.schema import DetectionRecord
-from match_tagger.detection.summary import coverage
+from match_tagger.detection.summary import coverage, track_stability
 from match_tagger.tracking.config import TrackingConfig
 from match_tagger.video.frames import VideoConfig
 
@@ -52,10 +52,27 @@ def test_coverage_shares():
     assert stats["ball_frame_share"] == 0.25
     assert stats["n_tracks"] == 4
     assert stats["records_per_class"] == {"player": 4, "referee": 1, "ball": 1}
+    assert stats["n_player_tracks"] == 3
+    assert stats["mean_labelled_players_per_frame"] == 0.75  # 3 labelled rows / 4 frames
+
+
+def test_track_stability_median_span():
+    # t_sec = frame / 25. Track spans: 1 -> 0.4 s, 2 -> 0.2 s, 3 -> 1.0 s; the referee is ignored.
+    records = [
+        _rec(0, "player", 1, 0), _rec(10, "player", 1, 0),
+        _rec(5, "player", 2, 1), _rec(10, "player", 2, None),
+        _rec(0, "player", 3, 1), _rec(25, "player", 3, 1),
+        _rec(0, "referee", 4), _rec(50, "referee", 4),
+    ]  # fmt: skip
+    stats = track_stability(records, n_sampled_frames=5)
+    assert stats["n_player_tracks"] == 3
+    assert stats["median_player_track_sec"] == pytest.approx(0.4)
+    assert stats["mean_labelled_players_per_frame"] == pytest.approx(5 / 5)
 
 
 def test_repo_configs_parse():
     assert load_config("video", VideoConfig).stride_fps == 5.0
+    assert load_config("video", VideoConfig).detect_fps == 12.5
     assert load_config("detection", DetectionConfig).conf == 0.3
     assert load_config("tracking", TrackingConfig).bytetrack.minimum_consecutive_frames == 3
     assert str(load_config("default", DefaultConfig).paths.models_dir) == "models"

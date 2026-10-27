@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 class VideoConfig(BaseModel):
     """Sampling parameters from configs/video.yaml."""
 
-    stride_fps: float = Field(5.0, gt=0)
+    stride_fps: float = Field(5.0, gt=0, description="Rate of the frames written to outputs.")
+    detect_fps: float | None = Field(
+        None, gt=0, description="Rate of the frames processed; None = stride_fps."
+    )
     start_sec: float = Field(0.0, ge=0)
     duration_sec: float | None = Field(None, gt=0)
 
@@ -49,6 +52,21 @@ def select_frame_indices(meta: VideoMeta, cfg: VideoConfig) -> list[FrameRef]:
             indices.append(index)
         k += 1
     return [FrameRef(index=i, t_sec=i / meta.fps) for i in indices]
+
+
+def processing_frames(meta: VideoMeta, cfg: VideoConfig) -> tuple[list[FrameRef], set[int]]:
+    """Return the frames to process and the indices of those to write to outputs.
+
+    Processed frames are the union of the ``detect_fps`` grid and the ``stride_fps`` output
+    grid, so output timestamps stay on the output grid even when the two rates do not align.
+    """
+    output = select_frame_indices(meta, cfg)
+    output_idx = {ref.index for ref in output}
+    if cfg.detect_fps is None:
+        return output, output_idx
+    dense = select_frame_indices(meta, cfg.model_copy(update={"stride_fps": cfg.detect_fps}))
+    merged = {ref.index: ref for ref in [*dense, *output]}
+    return [merged[i] for i in sorted(merged)], output_idx
 
 
 def read_meta(path: Path) -> VideoMeta:

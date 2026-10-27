@@ -1,4 +1,6 @@
 # Frame sampling for all video-reading stages.
-stride_fps: 5.0        # sampled frames per second
+stride_fps: 5.0        # frames per second written to outputs
+detect_fps: 12.5       # frames per second run through detector + tracker; null = stride_fps
+                       # (see docs/EXPERIMENTS.md, 2026-10-27)
 start_sec: 0.0         # start of the processed window
 duration_sec: null     # null = until the end of the video

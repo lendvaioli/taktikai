@@ -1,6 +1,11 @@
 import pytest
 
-from match_tagger.video.frames import VideoConfig, VideoMeta, select_frame_indices
+from match_tagger.video.frames import (
+    VideoConfig,
+    VideoMeta,
+    processing_frames,
+    select_frame_indices,
+)
 
 
 def _meta(fps, n_frames=10_000):
@@ -36,6 +41,20 @@ def test_start_and_duration_window():
 def test_window_is_clipped_to_video_length():
     refs = select_frame_indices(_meta(25, n_frames=12), VideoConfig(stride_fps=5))
     assert [r.index for r in refs] == [0, 5, 10]
+
+
+def test_processing_frames_default_equals_output_grid():
+    refs, output = processing_frames(_meta(25), VideoConfig(stride_fps=5, duration_sec=1))
+    assert [r.index for r in refs] == [0, 5, 10, 15, 20]
+    assert output == {0, 5, 10, 15, 20}
+
+
+def test_processing_frames_dense_grid_includes_output_grid():
+    # 12.5 fps on 25 fps -> every 2nd frame; the 5 fps output frames 5 and 15 are added.
+    cfg = VideoConfig(stride_fps=5, detect_fps=12.5, duration_sec=1)
+    refs, output = processing_frames(_meta(25), cfg)
+    assert [r.index for r in refs] == [0, 2, 4, 5, 6, 8, 10, 12, 14, 15, 16, 18, 20, 22, 24]
+    assert output == {0, 5, 10, 15, 20}
 
 
 def test_start_beyond_end_yields_nothing():

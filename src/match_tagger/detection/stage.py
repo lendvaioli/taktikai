@@ -20,8 +20,8 @@ from match_tagger.video.frames import (
     FrameRef,
     VideoConfig,
     iter_frames,
+    processing_frames,
     read_meta,
-    select_frame_indices,
 )
 
 if TYPE_CHECKING:
@@ -79,11 +79,17 @@ def _ball_record(ref: FrameRef, dets: "sv.Detections") -> list[DetectionRecord]:
 
 
 def _detect_and_track(
-    video: Path, refs: list[FrameRef], cfg: StageConfig, device: str, timer: _Timer
-) -> tuple[list[DetectionRecord], CropCollector]:
-    """Single pass over the sampled frames; returns untagged records and player crops."""
+    video: Path, refs: list[FrameRef], output_idx: set[int], cfg: StageConfig, device: str,
+    timer: _Timer,
+) -> tuple[list[DetectionRecord], CropCollector]:  # fmt: skip
+    """Single pass over the processed frames; returns untagged output records and crops.
+
+    Every processed frame feeds the tracker and the crop collector; only frames in
+    ``output_idx`` produce records.
+    """
     detector = build_detector(cfg.detection, cfg.paths.paths.models_dir, device)
-    tracker = build_tracker(cfg.tracking.bytetrack, cfg.video.stride_fps)
+    track_fps = cfg.video.detect_fps or cfg.video.stride_fps
+    tracker = build_tracker(cfg.tracking.bytetrack, track_fps)
     collector = CropCollector(cfg.tracking.team)
     records: list[DetectionRecord] = []
     for ref, image in iter_frames(video, refs):
@@ -91,13 +97,15 @@ def _detect_and_track(
         dets = detector.detect(image)
         timer.add("detect", start)
         start = time.perf_counter()
-        records += _ball_record(ref, dets)
+        is_output = ref.index in output_idx
+        records += _ball_record(ref, dets) if is_output else []
         people = dets[dets.class_id != BALL].with_nms(cfg.detection.nms_iou, class_agnostic=True)
         tracked = track(tracker, people)
         for xyxy, conf, cls_idx, tid in zip(
             tracked.xyxy, tracked.confidence, tracked.class_id, tracked.tracker_id, strict=True
         ):
-            records.append(_record(ref, int(cls_idx), xyxy, conf, int(tid)))
+            if is_output:
+                records.append(_record(ref, int(cls_idx), xyxy, conf, int(tid)))
             if cls_idx == PLAYER:
                 collector.add(image, int(tid), xyxy)
         timer.add("track_and_crop", start)
@@ -117,8 +125,8 @@ def run_detection(video: Path, match_id: str, cfg: StageConfig) -> DetectionSumm
     started = time.perf_counter()
     timer, out_dir = _Timer(), cfg.paths.paths.processed_dir / match_id
     device = resolve_device(cfg.detection.device)
-    refs = select_frame_indices(read_meta(video), cfg.video)
-    records, collector = _detect_and_track(video, refs, cfg, device, timer)
+    refs, output_idx = processing_frames(read_meta(video), cfg.video)
+    records, collector = _detect_and_track(video, refs, output_idx, cfg, device, timer)
     start = time.perf_counter()
     records = label_teams(records, _classify_teams(collector, cfg, device))
     timer.add("teams", start)
@@ -137,7 +145,8 @@ def run_detection(video: Path, match_id: str, cfg: StageConfig) -> DetectionSumm
     summary = DetectionSummary(
         match_id=match_id, video=str(video), device=device,
         timings_sec={k: round(v, 2) for k, v in timer.totals.items()},
-        **coverage(records, len(refs)),
+        n_processed_frames=len(refs),
+        **coverage(records, len(output_idx)),
     )  # fmt: skip
     (out_dir / "detection_summary.json").write_text(
         summary.model_dump_json(indent=2), encoding="utf-8"
