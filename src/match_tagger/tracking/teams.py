@@ -64,7 +64,11 @@ def crop_box(image: np.ndarray, xyxy: Sequence[float]) -> np.ndarray | None:
 
 
 class CropCollector:
-    """Keeps up to ``crops_per_track`` crops per player track, one per ``crop_every`` sightings."""
+    """Keeps up to ``crops_per_track`` crops per track, one per ``crop_every`` sightings.
+
+    Crops are collected for every person track; ``subset`` keeps those of the tracks whose
+    resolved class is player before the team fit.
+    """
 
     def __init__(self, cfg: TeamConfig) -> None:
         """Start with no crops."""
@@ -83,6 +87,11 @@ class CropCollector:
         if crop is not None:
             self.track_ids.append(track_id)
             self.crops.append(crop)
+
+    def subset(self, keep: set[int]) -> tuple[list[int], list[np.ndarray]]:
+        """Return the track ids and crops of the tracks in ``keep``."""
+        pairs = [(t, c) for t, c in zip(self.track_ids, self.crops, strict=True) if t in keep]
+        return [t for t, _ in pairs], [c for _, c in pairs]
 
 
 def vote_per_track(track_ids: Sequence[int], labels: Sequence[int]) -> dict[int, int]:

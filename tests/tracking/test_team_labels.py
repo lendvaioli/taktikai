@@ -33,6 +33,16 @@ def test_crop_collector_samples_every_nth_and_caps():
     assert collector.track_ids == [3, 3, 4]
 
 
+def test_crop_collector_subset_keeps_only_given_tracks():
+    collector = CropCollector(TeamConfig(crop_every=1, crops_per_track=5))
+    image = np.zeros((10, 10, 3), dtype=np.uint8)
+    for track_id in (1, 2, 1, 3):
+        collector.add(image, track_id, [0, 0, 5, 5])
+    track_ids, crops = collector.subset({1, 3})
+    assert track_ids == [1, 1, 3]
+    assert len(crops) == 3
+
+
 def test_vote_per_track():
     assert vote_per_track([1, 1, 1, 2], [0, 1, 0, 1]) == {1: 0, 2: 1}
 

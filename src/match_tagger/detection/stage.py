@@ -13,6 +13,7 @@ from match_tagger.detection.detector import build_detector, resolve_device
 from match_tagger.detection.render import render_debug
 from match_tagger.detection.schema import CLASSES, DetectionRecord, write_detections
 from match_tagger.detection.summary import DetectionSummary, coverage
+from match_tagger.tracking.classes import ClassVotes, apply_track_classes
 from match_tagger.tracking.config import TrackingConfig
 from match_tagger.tracking.teams import CropCollector, TeamClassifier, label_teams, vote_per_track
 from match_tagger.tracking.tracker import build_tracker, track
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     import supervision as sv
 
 BALL = CLASSES.index("ball")
-PLAYER = CLASSES.index("player")
 
 
 @dataclass
@@ -81,16 +81,16 @@ def _ball_record(ref: FrameRef, dets: "sv.Detections") -> list[DetectionRecord]:
 def _detect_and_track(
     video: Path, refs: list[FrameRef], output_idx: set[int], cfg: StageConfig, device: str,
     timer: _Timer,
-) -> tuple[list[DetectionRecord], CropCollector]:  # fmt: skip
-    """Single pass over the processed frames; returns untagged output records and crops.
+) -> tuple[list[DetectionRecord], CropCollector, ClassVotes]:  # fmt: skip
+    """Single pass over the processed frames; returns untagged output records, crops and votes.
 
-    Every processed frame feeds the tracker and the crop collector; only frames in
-    ``output_idx`` produce records.
+    Every processed frame feeds the tracker, the crop collector and the class votes; only
+    frames in ``output_idx`` produce records.
     """
     detector = build_detector(cfg.detection, cfg.paths.paths.models_dir, device)
     track_fps = cfg.video.detect_fps or cfg.video.stride_fps
     tracker = build_tracker(cfg.tracking.bytetrack, track_fps)
-    collector = CropCollector(cfg.tracking.team)
+    collector, votes = CropCollector(cfg.tracking.team), ClassVotes()
     records: list[DetectionRecord] = []
     for ref, image in iter_frames(video, refs):
         start = time.perf_counter()
@@ -106,18 +106,21 @@ def _detect_and_track(
         ):
             if is_output:
                 records.append(_record(ref, int(cls_idx), xyxy, conf, int(tid)))
-            if cls_idx == PLAYER:
-                collector.add(image, int(tid), xyxy)
+            votes.add(int(tid), CLASSES[cls_idx], float(conf))
+            collector.add(image, int(tid), xyxy)
         timer.add("track_and_crop", start)
-    return records, collector
+    return records, collector, votes
 
 
-def _classify_teams(collector: CropCollector, cfg: StageConfig, device: str) -> dict[int, int]:
-    """Cluster player crops into two teams and vote one team per track."""
-    if len(collector.crops) < 3:
+def _classify_teams(
+    collector: CropCollector, player_tracks: set[int], cfg: StageConfig, device: str
+) -> dict[int, int]:
+    """Cluster the crops of player tracks into two teams and vote one team per track."""
+    track_ids, crops = collector.subset(player_tracks)
+    if len(crops) < 3:
         return {}
-    labels = TeamClassifier(cfg.tracking.team, device).fit_predict(collector.crops)
-    return vote_per_track(collector.track_ids, labels)
+    labels = TeamClassifier(cfg.tracking.team, device).fit_predict(crops)
+    return vote_per_track(track_ids, labels)
 
 
 def run_detection(video: Path, match_id: str, cfg: StageConfig) -> DetectionSummary:
@@ -126,9 +129,12 @@ def run_detection(video: Path, match_id: str, cfg: StageConfig) -> DetectionSumm
     timer, out_dir = _Timer(), cfg.paths.paths.processed_dir / match_id
     device = resolve_device(cfg.detection.device)
     refs, output_idx = processing_frames(read_meta(video), cfg.video)
-    records, collector = _detect_and_track(video, refs, output_idx, cfg, device, timer)
+    records, collector, votes = _detect_and_track(video, refs, output_idx, cfg, device, timer)
     start = time.perf_counter()
-    records = label_teams(records, _classify_teams(collector, cfg, device))
+    track_cls = votes.resolve()
+    records = apply_track_classes(records, track_cls)
+    player_tracks = {tid for tid, cls in track_cls.items() if cls == "player"}
+    records = label_teams(records, _classify_teams(collector, player_tracks, cfg, device))
     timer.add("teams", start)
     write_detections(records, out_dir / "detections.parquet")
     if cfg.detection.debug.enabled:
