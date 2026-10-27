@@ -1,0 +1,27 @@
+# Pitch stage: keypoints -> homography -> positions in metres. See docs/MODELS.md for the
+# keypoint model's licence caveats and docs/EXPERIMENTS.md for how the thresholds were chosen.
+backend: ultralytics_pose
+weights:
+  filename: football-pitch-detection.pt       # stored under paths.models_dir
+  gdrive_id: 1Ma5Kt86tgpdjCTKfum79YMgNnSjcoOyf # from roboflow/sports examples/soccer/setup.sh
+imgsz: 640                       # training size of the keypoint model
+device: auto
+homography:
+  kp_conf: 0.5                   # min keypoint confidence
+  min_points: 4                  # fewer confident keypoints or RANSAC inliers -> no homography
+  reproj_threshold_m: 1.0        # RANSAC inlier threshold, metres on the pitch
+  max_reproj_error_m: 1.0        # reject fits whose mean inlier error is larger
+smooth_window_sec: 0.4           # centred window; 0 disables smoothing
+max_reuse_sec: 2.0               # reuse the last valid homography for at most this long
+out_margin_m: 5.0                # flag points further than this outside the pitch
+max_speed_mps: 12.0              # summary only: player steps faster than this count as jumps
+dims:                            # default pitch; markings follow IFAB sizes
+  length_m: 105.0
+  width_m: 68.0
+match_sizes: {}                  # per-match override, e.g.  my_match: {length_m: 100, width_m: 64}
+minimap:
+  enabled: true
+  start_sec: 0.0
+  duration_sec: 30.0
+  panel_height: 540
+  overlay: true                  # keypoints + projected pitch lines on the footage

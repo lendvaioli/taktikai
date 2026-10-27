@@ -76,3 +76,8 @@ def read_detections(path: Path) -> pd.DataFrame:
     return pq.read_table(path).to_pandas(
         types_mapper={pa.int32(): pd.Int32Dtype(), pa.int8(): pd.Int8Dtype()}.get
     )
+
+
+def load_detection_records(path: Path) -> list[DetectionRecord]:
+    """Read detections.parquet back into validated records (nulls become None)."""
+    return [DetectionRecord.model_validate(row) for row in pq.read_table(path).to_pylist()]

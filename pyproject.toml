@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "numpy>=1.26",
+    "opencv-python>=4.10",
     "pandas>=2.2",
     "pyarrow>=16.0",
     "pydantic>=2.7",
@@ -15,7 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
     "gdown>=5.2",
-    "opencv-python>=4.10",
+    "mplsoccer>=1.8",
     "scikit-learn>=1.5",
     "supervision>=0.25,<0.31",  # sv.ByteTrack removed in 0.31.0
     "torch>=2.4",

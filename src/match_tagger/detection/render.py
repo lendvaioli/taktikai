@@ -15,13 +15,13 @@ PALETTE = ["#00BFFF", "#FF1493", "#A0A0A0", "#FFD700", "#FFFFFF"]
 NO_TEAM, REFEREE, BALL = 2, 3, 4
 
 
-def color_slot(record: DetectionRecord) -> int:
-    """Return the palette index for a record."""
-    if record.cls == "ball":
+def color_slot(cls: str, team: int | None) -> int:
+    """Return the palette index for an object class and team."""
+    if cls == "ball":
         return BALL
-    if record.cls == "referee":
+    if cls == "referee":
         return REFEREE
-    return NO_TEAM if record.team is None else record.team
+    return NO_TEAM if team is None else team
 
 
 def label(record: DetectionRecord) -> str:
@@ -41,7 +41,7 @@ def _annotate(image: np.ndarray, records: Sequence[DetectionRecord], tools: tupl
             continue
         dets = sv.Detections(
             xyxy=np.array([[r.x1, r.y1, r.x2, r.y2] for r in group], dtype=np.float32),
-            class_id=np.array([color_slot(r) for r in group]),
+            class_id=np.array([color_slot(r.cls, r.team) for r in group]),
         )
         for annotator in annotators:
             if annotator is labeler:

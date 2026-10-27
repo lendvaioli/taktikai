@@ -6,7 +6,7 @@ from pathlib import Path
 
 from match_tagger.config import CONFIG_DIR
 
-IMPLEMENTED_STAGES = ("detection",)
+IMPLEMENTED_STAGES = ("detection", "pitch")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -31,14 +31,19 @@ def run_stage(args: argparse.Namespace) -> int:
     if not args.video.exists():
         print(f"Video not found: {args.video}", file=sys.stderr)
         return 1
-    from match_tagger.detection.stage import StageConfig, run_detection
+    if args.stage == "detection":
+        from match_tagger.detection.stage import StageConfig as Config
+        from match_tagger.detection.stage import run_detection as run
+    else:
+        from match_tagger.pitch.stage import PitchStageConfig as Config
+        from match_tagger.pitch.stage import run_pitch as run
 
-    cfg = StageConfig.load(args.config_dir)
+    cfg = Config.load(args.config_dir)
     overrides = {"start_sec": args.start, "duration_sec": args.duration}
     cfg.video = cfg.video.model_validate(
         {**cfg.video.model_dump(), **{k: v for k, v in overrides.items() if v is not None}}
     )
-    summary = run_detection(args.video, args.match or args.video.stem, cfg)
+    summary = run(args.video, args.match or args.video.stem, cfg)
     print(summary.model_dump_json(indent=2))
     return 0
 
