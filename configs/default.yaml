@@ -1,14 +1,13 @@
 # Default pipeline configuration. One section per stage; values are added
 # together with the stage implementation. Stage-specific files live next to this one.
 
-# video:
-#   frame sampling and decoding parameters
+paths:
+  processed_dir: data/processed
+  models_dir: models                # downloaded weights, never committed
 
-# detection:
-#   detector model and confidence thresholds
-
-# tracking:
-#   tracker parameters
+# video:      see configs/video.yaml
+# detection:  see configs/detection.yaml
+# tracking:   see configs/tracking.yaml
 
 # pitch:
 #   pitch dimensions and calibration parameters

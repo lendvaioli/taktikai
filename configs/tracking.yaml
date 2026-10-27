@@ -1,0 +1,14 @@
+# Tracking and unsupervised team assignment (used by the detection stage).
+bytetrack:
+  track_activation_threshold: 0.25
+  lost_track_seconds: 2.0          # keep lost tracks this long before dropping them
+  minimum_matching_threshold: 0.8
+  minimum_consecutive_frames: 3    # as in roboflow/sports
+team:
+  embed_model: google/siglip-base-patch16-224
+  crops_per_track: 10              # max crops embedded per player track
+  crop_every: 5                    # take a crop every Nth sighting of a track
+  batch_size: 32
+  umap_components: 3
+  umap_neighbors: 15
+  seed: 0

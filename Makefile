@@ -2,10 +2,10 @@
 .PHONY: help install test lint eval run
 
 help:
-	@echo "Targets: install | test | lint | eval MATCH=<id> | run STAGE=<stage> VIDEO=<path>"
+	@echo "Targets: install | test | lint | eval MATCH=<id> | run STAGE=<stage> VIDEO=<path> [ARGS=...]"
 
 install:
-	uv sync
+	uv sync --all-extras
 
 test:
 	uv run pytest
@@ -18,4 +18,4 @@ eval:
 	@echo "eval MATCH=$(MATCH): not implemented yet"
 
 run:
-	@echo "run STAGE=$(STAGE) VIDEO=$(VIDEO): not implemented yet"
+	uv run python -m match_tagger.cli run --stage $(STAGE) --video $(VIDEO) $(ARGS)

@@ -1,0 +1,4 @@
+# Frame sampling for all video-reading stages.
+stride_fps: 5.0        # sampled frames per second
+start_sec: 0.0         # start of the processed window
+duration_sec: null     # null = until the end of the video

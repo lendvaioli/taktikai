@@ -1,0 +1,20 @@
+# Detection stage. See docs/MODELS.md for the model and its licence caveats.
+backend: ultralytics_yolo          # key in match_tagger.detection.detector.BACKENDS
+weights:
+  filename: football-player-detection.pt     # stored under paths.models_dir
+  gdrive_id: 17PXFNlx-jI7VjVo_vQnB1sONjRyvoB-q  # from roboflow/sports examples/soccer/setup.sh
+conf: 0.3                          # detection confidence threshold
+imgsz: 1280                        # inference size, as in roboflow/sports
+nms_iou: 0.5                       # class-agnostic NMS for players, keepers, referees
+device: auto                       # auto | cpu | cuda
+class_map:                         # model class name -> pipeline class
+  player: player
+  goalkeeper: goalkeeper
+  referee: referee
+  ball: ball
+ball_model:
+  enabled: false                   # separate ball model + sliced inference (not implemented)
+debug:
+  enabled: true
+  start_sec: 0.0
+  duration_sec: 30.0
