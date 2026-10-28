@@ -104,12 +104,21 @@ def evaluate_set(golden: GoldenSet, load: PredictionLoader, tolerance_sec: float
 
 
 def git_commit() -> str | None:
-    """Short commit hash of HEAD, with ``-dirty`` if the work tree has changes."""
+    """Short commit hash of HEAD, with ``-dirty`` if the work tree has changes.
+
+    Changes under evals/results/ are ignored: they are outputs of runs, not inputs, and a fresh
+    tuning report would otherwise mark the next evaluation as dirty.
+    """
     try:
-        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
-                              text=True, check=True).stdout.strip()  # fmt: skip
-        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True,
-                               text=True, check=True).stdout.strip()  # fmt: skip
+        head = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--", ".", ":!evals/results"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
     return f"{head}-dirty" if dirty else head
