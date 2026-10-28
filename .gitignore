@@ -17,3 +17,5 @@ dist/
 .ruff_cache/
 .ipynb_checkpoints/
 
+# Review: golden candidates, regenerated from events.json + corrections
+evals/candidates/

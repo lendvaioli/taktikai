@@ -21,6 +21,8 @@ class EvalConfig(BaseModel):
     tolerance_sec: float = Field(2.0, gt=0)
     golden_dir: Path = Path("evals/golden")
     results_dir: Path = Path("evals/results")
+    corrections_dir: Path = Path("evals/corrections")
+    candidates_dir: Path = Path("evals/candidates")
     predictions: str = Field(
         "data/processed/{clip_id}/events.json", description="Path pattern of predictions."
     )

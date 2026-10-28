@@ -1,0 +1,13 @@
+# Clips stage: one video clip per predicted event (data/processed/<match>/clips/).
+pre_sec: 5.0                       # clip starts this long before the event
+post_sec: 3.0                      # clip ends this long after the event
+copy_max_keyframe_offset_sec: 0.5  # stream copy (no re-encode) only if the last keyframe before
+                                   # the clip start is at most this much earlier; stream copy
+                                   # must start on a keyframe, so the clip starts that much early
+reencode:                          # fallback when stream copy is not possible or fails
+  video_codec: libx264
+  preset: veryfast                 # fast encode; clips are short
+  crf: 23                          # visual quality (lower = better, larger files)
+  audio_codec: aac                 # only used if the source has audio
+ffmpeg: ffmpeg                     # executables on PATH (see docs/MODELS.md, external tools)
+ffprobe: ffprobe

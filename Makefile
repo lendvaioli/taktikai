@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help install test lint eval eval-compare tune team-sheets tag run
+.PHONY: help install test lint eval eval-compare tune team-sheets tag review run
 
 help:
 	@echo "Targets: install | test | lint | eval [SET=<golden set>] | eval-compare A=<file> B=<file>"
-	@echo "         tune | team-sheets | tag | run STAGE=<stage> VIDEO=<path> [ARGS=...]"
+	@echo "         tune | team-sheets | tag | review | run STAGE=<stage> VIDEO=<path> [ARGS=...]"
 
 install:
 	uv sync --all-extras
@@ -29,6 +29,9 @@ team-sheets:
 
 tag:
 	uv run streamlit run apps/tagger.py
+
+review:
+	uv run streamlit run apps/review.py
 
 run:
 	uv run python -m match_tagger.cli run --stage $(STAGE) --video $(VIDEO) $(ARGS)

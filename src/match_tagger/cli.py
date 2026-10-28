@@ -7,7 +7,7 @@ from pathlib import Path
 
 from match_tagger.config import CONFIG_DIR
 
-IMPLEMENTED_STAGES = ("detection", "pitch", "events")
+IMPLEMENTED_STAGES = ("detection", "pitch", "events", "clips")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -38,15 +38,19 @@ def run_stage(args: argparse.Namespace) -> int:
     elif args.stage == "pitch":
         from match_tagger.pitch.stage import PitchStageConfig as Config
         from match_tagger.pitch.stage import run_pitch as run
-    else:
+    elif args.stage == "events":
         from match_tagger.events.stage import EventsStageConfig as Config
         from match_tagger.events.stage import run_events as run
+    else:
+        from match_tagger.clips.stage import ClipsStageConfig as Config
+        from match_tagger.clips.stage import run_clips as run
 
     cfg = Config.load(args.config_dir)
-    overrides = {"start_sec": args.start, "duration_sec": args.duration}
-    cfg.video = cfg.video.model_validate(
-        {**cfg.video.model_dump(), **{k: v for k, v in overrides.items() if v is not None}}
-    )
+    if hasattr(cfg, "video"):  # stages that sample frames accept a time window
+        overrides = {"start_sec": args.start, "duration_sec": args.duration}
+        cfg.video = cfg.video.model_validate(
+            {**cfg.video.model_dump(), **{k: v for k, v in overrides.items() if v is not None}}
+        )
     summary = run(args.video, args.match or args.video.stem, cfg)
     print(summary.model_dump_json(indent=2))
     return 0
