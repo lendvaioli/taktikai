@@ -80,12 +80,30 @@ def run_tune(config_dir: Path) -> int:
             f"{f.held_out:<10} {fmt(f.held.precision):>6} {fmt(f.held.recall):>6} "
             f"{fmt(f.held.f1):>6}  {f.params}"
         )
+    print(
+        f"{'clip':<10} {'gold':>4} {'held R':>6} {'held F1':>7} {'in R':>6} {'in F1':>6} "
+        f"{'tracks':>6} {'med s':>6} {'ball':>5}"
+    )
+    for c in report.per_clip_pass:
+        print(
+            f"{c.clip_id:<10} {c.golden_passes:>4} {fmt(c.held_out.recall):>6} "
+            f"{fmt(c.held_out.f1):>7} {fmt(c.in_sample.recall):>6} {fmt(c.in_sample.f1):>6} "
+            f"{c.n_player_tracks:>6} {c.median_player_track_sec or 0:>6.1f} "
+            f"{c.ball_frame_share or 0:>5.2f}"
+        )
     h, s = report.held_out_pass, report.held_out_pass_spread
     print(
         f"pass, held-out micro: P {fmt(h.precision)} R {fmt(h.recall)} F1 {fmt(h.f1)} "
         f"(TP {h.tp} FP {h.fp} FN {h.fn}); fold F1 mean {fmt(s.mean)} std {fmt(s.std)}"
     )
     print(f"final params (in-sample, NOT held-out): {report.final_params_in_sample}")
+    print(f"{'airborne mode':<14} {'P':>6} {'R':>6} {'F1':>6} {'F1 std':>7} {'flagged':>8}")
+    for m in report.by_airborne_mode:
+        r = m.held_out_pass
+        print(
+            f"{m.mode:<14} {fmt(r.precision):>6} {fmt(r.recall):>6} {fmt(r.f1):>6} "
+            f"{fmt(m.spread.std):>7} {m.airborne_share:>8.1%}"
+        )
     print(f"written: {write_report(report, eval_cfg.results_dir)}")
     return 0
 

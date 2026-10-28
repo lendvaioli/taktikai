@@ -1,6 +1,6 @@
 """Configuration models for the events stage (configs/events.yaml, configs/matches.yaml)."""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -18,8 +18,10 @@ class TeamMappingConfig(BaseModel):
 class BallConfig(BaseModel):
     """Airborne flag and gap interpolation of the projected ball."""
 
-    airborne_enabled: bool = True
+    airborne_mode: Literal["off", "fixed", "calibrated"] = "fixed"
     airborne_size_ratio: float = Field(1.6, gt=1)
+    calibration_near_m: float = Field(1.5, gt=0)
+    calibration_min_samples: int = Field(10, ge=1)
     max_ground_speed_mps: float = Field(35.0, gt=0)
     ball_diameter_m: float = Field(0.22, gt=0)
     max_interp_gap_sec: float = Field(0.4, ge=0)

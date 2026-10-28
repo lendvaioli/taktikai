@@ -11,8 +11,13 @@ from pydantic import BaseModel
 
 from match_tagger.config import DefaultConfig, load_config
 from match_tagger.detection.schema import read_detections
-from match_tagger.events.ball import airborne_flags, expected_ball_px, interpolate_gaps
-from match_tagger.events.config import EventsConfig, MatchesConfig
+from match_tagger.events.ball import (
+    airborne_flags,
+    expected_ball_px,
+    ground_ratio_baseline,
+    interpolate_gaps,
+)
+from match_tagger.events.config import BallConfig, EventsConfig, MatchesConfig
 from match_tagger.events.possession import FramePlayers, Segment, frame_candidate, segments
 from match_tagger.events.rules import events_from_segments
 from match_tagger.events.schema import Event, EventsFile, Team
@@ -69,6 +74,7 @@ class Detection:
     airborne: np.ndarray
     interpolated: np.ndarray
     possessed: np.ndarray
+    ratio_baseline: float | None = None
 
 
 def _team_mapping(
@@ -168,20 +174,41 @@ def load_clip(match_dir: Path, video: Path, kits: dict[Team, str], cfg: EventsCo
     )
 
 
+def airborne_mask(clip: ClipData, cfg: BallConfig) -> tuple[np.ndarray, float | None]:
+    """Airborne flag per frame for the configured mode, and the calibration baseline used.
+
+    ``calibrated`` divides the size ratio by the clip's ground-ball baseline; without enough
+    ground balls for a baseline it falls back to the fixed rule (baseline None).
+    """
+    airborne = np.zeros(len(clip.times), dtype=bool)
+    seen = ~np.isnan(clip.ball_xy[:, 0])
+    if cfg.airborne_mode == "off" or not seen.any():
+        return airborne, None
+    ratio, baseline = clip.ball_size_ratio, None
+    if cfg.airborne_mode == "calibrated":
+        baseline = ground_ratio_baseline(
+            clip.ball_xy,
+            ratio,
+            [p.xy for p in clip.players],
+            cfg.calibration_near_m,
+            cfg.calibration_min_samples,
+        )
+        ratio = ratio / baseline if baseline else ratio
+    airborne[seen] = airborne_flags(
+        clip.times[seen],
+        clip.ball_xy[seen],
+        ratio[seen],
+        cfg.airborne_size_ratio,
+        cfg.max_ground_speed_mps,
+    )
+    return airborne, baseline
+
+
 def detect_events(clip: ClipData, cfg: EventsConfig) -> Detection:
     """Run the v1 rules on loaded clip data (pure; used by the stage and by tuning)."""
+    airborne, baseline = airborne_mask(clip, cfg.ball)
     ball = clip.ball_xy.copy()
-    airborne = np.zeros(len(ball), dtype=bool)
-    seen = ~np.isnan(ball[:, 0])
-    if cfg.ball.airborne_enabled and seen.sum() > 0:
-        airborne[seen] = airborne_flags(
-            clip.times[seen],
-            ball[seen],
-            clip.ball_size_ratio[seen],
-            cfg.ball.airborne_size_ratio,
-            cfg.ball.max_ground_speed_mps,
-        )
-        ball[airborne] = np.nan
+    ball[airborne] = np.nan
     ball, interpolated = interpolate_gaps(
         clip.times, ball, cfg.ball.max_interp_gap_sec, blocked=airborne
     )
@@ -190,7 +217,7 @@ def detect_events(clip: ClipData, cfg: EventsConfig) -> Detection:
     segs = segments(clip.times, cands, cfg.possession.min_hold_sec)
     events = events_from_segments(segs, clip.times, ball, clip.clip_id, cfg.possession, cfg.rules)
     possessed = np.array([c is not None for c in cands])
-    return Detection(events, segs, ball, airborne, interpolated, possessed)
+    return Detection(events, segs, ball, airborne, interpolated, possessed, baseline)
 
 
 class EventsSummary(BaseModel):
@@ -203,6 +230,8 @@ class EventsSummary(BaseModel):
     kits: dict[str, str]
     n_frames: int
     ball_observed_share: float
+    airborne_mode: str
+    ball_ratio_baseline: float | None
     ball_airborne_share: float
     ball_interpolated_share: float
     ball_known_share: float
@@ -233,6 +262,8 @@ def run_events(video: Path, match_id: str, cfg: EventsStageConfig) -> EventsSumm
         kits=dict(kits),
         n_frames=n,
         ball_observed_share=float(observed.mean()),
+        airborne_mode=cfg.events.ball.airborne_mode,
+        ball_ratio_baseline=result.ratio_baseline,
         ball_airborne_share=float(result.airborne.sum() / max(observed.sum(), 1)),
         ball_interpolated_share=float(result.interpolated.mean()),
         ball_known_share=float((~np.isnan(result.ball_xy[:, 0])).mean()),

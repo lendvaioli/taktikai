@@ -1,5 +1,6 @@
 """``make tune``: leave-one-clip-out tuning and error analysis of events v1 on a golden set."""
 
+import json
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Any
 
 import numpy as np
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from match_tagger.evals.diagnostics import (
     MISS_CAUSES,
@@ -57,6 +58,55 @@ class Observability(BaseModel):
     recall_processed_not_observable: float | None
 
 
+class ModeResult(BaseModel):
+    """Leave-one-clip-out restricted to one airborne mode, for a side-by-side comparison."""
+
+    mode: str
+    held_out_pass: MetricRow
+    spread: Spread
+    fold_params: dict[str, dict[str, Any]]
+    airborne_share: float = Field(description="Flagged share of observed balls, start values.")
+    ratio_baselines: dict[str, float | None]
+
+
+class ClipPassResult(BaseModel):
+    """Pass metrics of one clip next to the tracking and ball statistics of its detections."""
+
+    clip_id: str
+    golden_passes: int
+    held_out: MetricRow = Field(description="From the fold that held this clip out.")
+    in_sample: MetricRow = Field(description="With the final thresholds tuned on all clips.")
+    n_player_tracks: int
+    median_player_track_sec: float | None
+    ball_frame_share: float | None
+
+
+def clip_pass_results(
+    folds: list[Fold],
+    pass_table: list[dict[str, Counts]],
+    final: int,
+    golden: GoldenSet,
+    processed_dir: Path,
+) -> list[ClipPassResult]:
+    """Per clip: held-out and in-sample pass metrics plus detection_summary.json statistics."""
+    out = []
+    for fold in folds:
+        clip_id = fold.held_out
+        summary = json.loads((processed_dir / clip_id / "detection_summary.json").read_text())
+        out.append(
+            ClipPassResult(
+                clip_id=clip_id,
+                golden_passes=sum(e.type == "pass" for e in golden.clip(clip_id).events),
+                held_out=fold.held,
+                in_sample=MetricRow.from_counts(pass_table[final][clip_id]),
+                n_player_tracks=summary["n_player_tracks"],
+                median_player_track_sec=summary.get("median_player_track_sec"),
+                ball_frame_share=summary.get("ball_frame_share"),
+            )
+        )
+    return out
+
+
 class TuningReport(BaseModel):
     """Result of one tuning run (evals/results/tuning/<timestamp>.json)."""
 
@@ -79,6 +129,45 @@ class TuningReport(BaseModel):
     held_out_miss_causes: dict[str, int]
     held_out_false_pass_causes: dict[str, int]
     observability: Observability
+    by_airborne_mode: list[ModeResult]
+    per_clip_pass: list[ClipPassResult]
+
+
+def compare_airborne_modes(
+    tables: dict[str, list[dict[str, Counts]]],
+    combos: list[dict[str, Any]],
+    tiebreak: list[int],
+    clips: dict[str, ClipData],
+    cfg: EventsStageConfig,
+) -> list[ModeResult]:
+    """Run leave-one-clip-out separately within each airborne mode of the grid."""
+    out = []
+    for mode in cfg.events.grid.get("ball.airborne_mode", []):
+        idx = [i for i, c in enumerate(combos) if c["ball.airborne_mode"] == mode]
+        folds = leave_one_out(
+            [tables["pass"][i] for i in idx],
+            list(clips),
+            [combos[i] for i in idx],
+            [tiebreak[i] for i in idx],
+        )
+        flagged = observed = 0
+        baselines: dict[str, float | None] = {}
+        for clip_id, clip in clips.items():
+            det = detect_events(clip, cfg.events.with_params({"ball.airborne_mode": mode}))
+            flagged += int(det.airborne.sum())
+            observed += int((~np.isnan(clip.ball_xy[:, 0])).sum())
+            baselines[clip_id] = det.ratio_baseline
+        out.append(
+            ModeResult(
+                mode=mode,
+                held_out_pass=held_out_total(folds),
+                spread=fold_spread(folds),
+                fold_params={f.held_out: f.params for f in folds},
+                airborne_share=flagged / max(observed, 1),
+                ratio_baselines=baselines,
+            )
+        )
+    return out
 
 
 def start_values(cfg: EventsStageConfig) -> dict[str, Any]:
@@ -241,6 +330,10 @@ def run_tuning(cfg: EventsStageConfig, eval_cfg: EvalConfig, reference_dir: Path
         held_out_miss_causes={c: misses[c] for c in MISS_CAUSES},
         held_out_false_pass_causes={c: false_passes[c] for c in ("track_break", "other")},
         observability=observability(obs, cfg.events.diagnostics.observable_window_sec),
+        by_airborne_mode=compare_airborne_modes(tables, combos, tiebreak, clips, cfg),
+        per_clip_pass=clip_pass_results(
+            folds, tables["pass"], final, golden, cfg.paths.paths.processed_dir
+        ),
     )
 
 

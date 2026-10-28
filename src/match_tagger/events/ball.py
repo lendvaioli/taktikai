@@ -6,6 +6,8 @@ pixel size is too large for its projected position is likely airborne. A project
 that jumps implausibly fast relative to both neighbours is flagged as well.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from match_tagger.pitch.homography import project
@@ -39,6 +41,26 @@ def airborne_flags(
     """Airborne if too large for the projected position or a speed spike (NaN ratio: no check)."""
     too_big = np.nan_to_num(size_ratio, nan=0.0) > max_ratio
     return too_big | speed_spikes(t, xy, max_speed_mps)
+
+
+def ground_ratio_baseline(
+    ball_xy: np.ndarray,
+    size_ratio: np.ndarray,
+    players_xy: Sequence[np.ndarray],
+    near_m: float,
+    min_samples: int,
+) -> float | None:
+    """Median size ratio of balls within ``near_m`` of a player (almost surely on the ground).
+
+    None if fewer than ``min_samples`` such observations have a known ratio.
+    """
+    ratios = []
+    for ball, ratio, players in zip(ball_xy, size_ratio, players_xy, strict=True):
+        if np.isnan(ball[0]) or np.isnan(ratio) or len(players) == 0:
+            continue
+        if np.linalg.norm(players - ball, axis=1).min() <= near_m:
+            ratios.append(ratio)
+    return float(np.median(ratios)) if len(ratios) >= min_samples else None
 
 
 def interpolate_gaps(

@@ -53,4 +53,5 @@ def test_repo_configs_parse_and_every_kit_is_in_the_palette():
     combos = 1
     for values in events.grid.values():
         combos *= len(values)
-    assert combos == 4 * 3 * 3 * 3 * 3 * 2
+    assert combos == 4 * 3 * 3 * 3 * 3 * 3
+    assert events.grid["ball.airborne_mode"] == ["off", "fixed", "calibrated"]
