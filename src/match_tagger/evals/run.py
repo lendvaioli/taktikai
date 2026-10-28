@@ -23,6 +23,7 @@ class EvalConfig(BaseModel):
     results_dir: Path = Path("evals/results")
     corrections_dir: Path = Path("evals/corrections")
     candidates_dir: Path = Path("evals/candidates")
+    reference_dir: Path = Path("evals/reference")
     predictions: str = Field(
         "data/processed/{clip_id}/events.json", description="Path pattern of predictions."
     )

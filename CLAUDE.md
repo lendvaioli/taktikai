@@ -10,9 +10,11 @@ video -> detection (detections.parquet) -> pitch (positions.parquet) -> events (
 - src/match_tagger/{video,detection,tracking,pitch,events,clips,metrics,report,evals}
 - apps/ Streamlit apps (tagger, review, demo)
 - notebooks/ Kaggle/Colab runners for GPU stages
-- configs/ YAML thresholds and parameters, one file per stage
+- configs/ YAML thresholds and parameters, one file per stage; configs/<name>.private.yaml (gitignored) is merged over <name>.yaml for entries that must not be published
+- evals/private/ (gitignored) golden sets, correction logs, eval results and references derived from licensed footage
 - prompts/ LLM prompts, versioned like code
-- docs/ MODELS.md (models, datasets, licences), GOLDEN.md, analyses
+- docs/ MODELS.md (models, datasets, licences), GOLDEN.md, analyses; docs/*_private.md (gitignored) for per-clip analyses
+- space/ static Hugging Face Space (StatsBomb demo), built by scripts/build_space.py
 - tests/ pytest, mirrors src layout
 
 ## Commands
@@ -21,7 +23,8 @@ make install | make test | make lint | make eval SET=<golden set> | make eval-co
 ## Rules
 - Numbers are computed by code. LLMs only interpret values returned by tools.
 - Every stage is idempotent, configured via configs/*.yaml, and writes its output to a file.
-- Never commit video, model weights or anything under data/. Never modify data/raw/ or evals/golden/.
+- Never commit video, model weights or anything under data/ or evals/private/. Never modify data/raw/, evals/golden/ or evals/private/golden/ (only the tagger app writes golden sets).
+- Publication: nothing derived from the DFL development footage is published (frames, minimaps, clips, positions, tagged events, per-clip results, clip ids, report quotes); only aggregates over a whole golden set. StatsBomb analysis is published only next to the StatsBomb logo (in space/), and raw StatsBomb data is never redistributed. Footage of a club is published only with its written consent. tests/test_publication.py enforces this; never weaken it to make a commit pass.
 - Open-source dependencies only. Record every model and dataset with source URL and licence in docs/MODELS.md. If a licence is unclear, stop and ask.
 - Python 3.11, type hints everywhere, English docstrings, functions under ~40 lines, pydantic models for every data contract.
 - Tests: pytest, no network, small synthetic fixtures with hand-checkable expected values.

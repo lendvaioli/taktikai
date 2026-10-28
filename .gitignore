@@ -19,3 +19,8 @@ dist/
 
 # Review: golden candidates, regenerated from events.json + corrections
 evals/candidates/
+
+# Never published: anything derived from licensed footage (DFL clips), and per-clip config
+evals/private/
+configs/*.private.yaml
+docs/*_private.md

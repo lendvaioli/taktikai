@@ -20,8 +20,6 @@ from match_tagger.evals.run import (
     write_run,
 )
 
-REFERENCE_DIR = Path("evals/reference")
-
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
@@ -76,7 +74,7 @@ def run_tune(config_dir: Path, label: str | None = None) -> int:
 
     cfg = EventsStageConfig.load(config_dir)
     eval_cfg = load_config("evals", EvalConfig, config_dir)
-    report = run_tuning(cfg, eval_cfg, REFERENCE_DIR, label)
+    report = run_tuning(cfg, eval_cfg, eval_cfg.reference_dir, label)
     print(f"{'held out':<10} {'P':>6} {'R':>6} {'F1':>6}  params")
     for f in report.folds:
         print(
