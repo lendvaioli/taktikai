@@ -17,6 +17,9 @@ dependencies = [
 apps = [
     "streamlit>=1.40",
 ]
+anthropic = [
+    "anthropic>=2.3,<3",  # optional report backend; the default backend (Ollama) needs no package
+]
 ml = [
     "gdown>=5.2",
     "mplsoccer>=1.8",

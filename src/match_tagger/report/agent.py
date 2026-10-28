@@ -1,0 +1,138 @@
+"""The report agent: a plain loop of at most ``max_steps`` LLM calls, no agent framework.
+
+Each step is one model call. Data tool calls are executed and their results appended; a
+``submit_report`` call is parsed and validated (schema, numbers, clip ids). A rejected
+report gets one retry with the validator's errors; the last step offers only
+``submit_report``. The loop never returns an unvalidated report.
+"""
+
+import json
+import time
+from typing import Any, Literal
+
+from pydantic import BaseModel, ValidationError
+
+from match_tagger.report.backends import LLMBackend
+from match_tagger.report.log import RunLog, ToolRecord
+from match_tagger.report.schema import Message, Report, ToolCall
+from match_tagger.report.tools import SUBMIT_SPEC, ToolBox, tool_specs
+from match_tagger.report.validate import validate_report
+
+Status = Literal["ok", "rejected", "max_steps"]
+NUDGE = "Use a tool, or call submit_report with the final report."
+
+
+class AgentSettings(BaseModel):
+    """Loop limits and validator settings."""
+
+    match_id: str
+    has_video: bool
+    max_steps: int = 8
+    retries: int = 1
+    tolerance: float = 0.5
+
+
+class AgentResult(BaseModel):
+    """Outcome of one run."""
+
+    status: Status
+    report: Report | None
+    errors: list[str]
+    steps: int
+
+
+def parse_submission(call: ToolCall) -> tuple[Report | None, list[str]]:
+    """The submitted report; accepts the fields directly or wrapped in a "report" key."""
+    args: Any = call.arguments.get("report", call.arguments)
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except json.JSONDecodeError as exc:
+            return None, [f"report is not valid JSON: {exc}"]
+    try:
+        return Report.model_validate(args), []
+    except ValidationError as exc:
+        return None, [f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()]
+
+
+def _run_tools(calls: list[ToolCall], box: ToolBox, messages: list[Message]) -> list[ToolRecord]:
+    records = []
+    for call in calls:
+        started = time.perf_counter()
+        result = box.run(call)
+        content = json.dumps(result, ensure_ascii=False)
+        records.append(
+            ToolRecord(
+                name=call.name,
+                arguments=call.arguments,
+                ms=round((time.perf_counter() - started) * 1000, 2),
+                result_chars=len(content),
+                error=result.get("error"),
+            )
+        )
+        messages.append(
+            Message(role="tool", content=content, tool_call_id=call.id, tool_name=call.name)
+        )
+    return records
+
+
+def _check(call: ToolCall, box: ToolBox, s: AgentSettings) -> tuple[Report | None, list[str]]:
+    report, errors = parse_submission(call)
+    if report is None:
+        return None, errors
+    return report, validate_report(
+        report, box.outputs, box.returned_clips, s.has_video, s.match_id, s.tolerance
+    )
+
+
+def _feedback(errors: list[str]) -> str:
+    return "REJECTED. Fix only these problems and call submit_report again:\n- " + "\n- ".join(
+        errors
+    )
+
+
+def run_agent(
+    backend: LLMBackend, system: str, user: str, box: ToolBox, s: AgentSettings, log: RunLog
+) -> AgentResult:
+    """Run the loop until a report is accepted, rejected twice, or the steps run out."""
+    messages = [Message(role="user", content=user)]
+    retries_left = s.retries
+    for step in range(1, s.max_steps + 1):
+        tools = [SUBMIT_SPEC] if step == s.max_steps else [*tool_specs(), SUBMIT_SPEC]
+        reply = backend.chat(system, messages, tools)
+        messages.append(
+            Message(
+                role="assistant", content=reply.text, tool_calls=reply.tool_calls, raw=reply.raw
+            )
+        )
+        submit = next((c for c in reply.tool_calls if c.name == "submit_report"), None)
+        records = _run_tools([c for c in reply.tool_calls if c is not submit], box, messages)
+        if submit is None:
+            log.step(step, reply, records, None)
+            if not reply.tool_calls:
+                messages.append(Message(role="user", content=NUDGE))
+            continue
+        report, errors = _check(submit, box, s)
+        log.step(step, reply, records, errors)
+        if not errors:
+            log.end("ok", step, [])
+            return AgentResult(status="ok", report=report, errors=[], steps=step)
+        if retries_left == 0:
+            log.end("rejected", step, errors)
+            return AgentResult(status="rejected", report=None, errors=errors, steps=step)
+        retries_left -= 1
+        messages.append(
+            Message(
+                role="tool",
+                content=_feedback(errors),
+                tool_call_id=submit.id,
+                tool_name=submit.name,
+            )
+        )
+    log.end("max_steps", s.max_steps, ["no accepted report within max_steps"])
+    return AgentResult(
+        status="max_steps",
+        report=None,
+        errors=["no accepted report within max_steps"],
+        steps=s.max_steps,
+    )

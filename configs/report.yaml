@@ -1,0 +1,25 @@
+# Report stage: metrics.json + events + clips -> report.json / report.md via an LLM agent.
+backend: ollama                       # ollama (local, free) | anthropic (optional, paid)
+backend_env: TAKTIKAI_LLM_BACKEND     # this environment variable overrides `backend`
+prompt_path: prompts/report_system.md # versioned like code; its sha256 is logged with every run
+max_steps: 8                          # LLM calls per run, the validator's retry included
+retries: 1                            # a rejected report gets one corrected resubmission
+number_tolerance: 0.5                 # a written number may differ from a tool value by half a
+                                      # unit of its last digit (rounding); shares also as percent
+max_events: 30                        # get_events returns at most this many events
+ollama:
+  host: http://127.0.0.1:11434        # local server only
+  model: hf.co/Qwen/Qwen3-8B-GGUF:Q4_K_M   # Apache-2.0, pulled from the Hugging Face Hub
+  think: false                        # Qwen3 non-thinking mode
+  timeout_sec: 900
+  options:                            # model card's non-thinking settings, plus a fixed seed
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    presence_penalty: 1.5
+    seed: 0
+    num_ctx: 16384                    # Ollama's default context is too small for tool results
+anthropic:
+  model: claude-opus-5-5
+  max_tokens: 16000
+  effort: medium
