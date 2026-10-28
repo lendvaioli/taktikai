@@ -1,11 +1,12 @@
 .DEFAULT_GOAL := help
-.PHONY: help install test lint eval eval-compare tune team-sheets tag review run statsbomb-list statsbomb
+.PHONY: help install test lint eval eval-compare tune team-sheets tag review run statsbomb-list statsbomb score-reports
 
 help:
 	@echo "Targets: install | test | lint | eval [SET=<golden set>] | eval-compare A=<file> B=<file>"
 	@echo "         tune | team-sheets | tag | review"
 	@echo "         run STAGE=<stage> VIDEO=<path> | MATCH=<id> [ARGS=...]"
 	@echo "         statsbomb-list [COMP=<id> SEASON=<id>] | statsbomb COMP=<id> SEASON=<id> MATCH=<id>"
+	@echo "         score-reports [ARGS='add <run_id>' | ARGS=summary]"
 
 install:
 	uv sync --all-extras
@@ -43,3 +44,6 @@ statsbomb-list:
 
 statsbomb:
 	uv run python -m match_tagger.metrics.statsbomb_fetch import --competition $(COMP) --season $(SEASON) --match $(MATCH)
+
+score-reports:
+	uv run python -m match_tagger.report.score $(or $(ARGS),list)
