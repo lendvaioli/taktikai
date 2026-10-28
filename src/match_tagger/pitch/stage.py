@@ -16,7 +16,12 @@ from match_tagger.pitch.homography import HomographyFit, fit_homography, select_
 from match_tagger.pitch.keypoints import build_keypoint_detector
 from match_tagger.pitch.minimap import FrameKeypoints, render_minimap
 from match_tagger.pitch.project import project_frame
-from match_tagger.pitch.schema import PositionRecord, write_positions
+from match_tagger.pitch.schema import (
+    HomographyRecord,
+    PositionRecord,
+    write_homographies,
+    write_positions,
+)
 from match_tagger.pitch.sequence import (
     HQuality,
     assign_quality,
@@ -102,6 +107,14 @@ def run_pitch(video: Path, match_id: str, cfg: PitchStageConfig) -> PitchSummary
     states = assign_quality(times, smoothed, cfg.pitch.max_reuse_sec)
     positions = _positions(records, refs[: len(fits)], states, cfg, match_id)
     write_positions(positions, out_dir / "positions.parquet")
+    write_homographies(
+        [
+            HomographyRecord(frame=ref.index, t_sec=ref.t_sec, h_quality=quality,
+                             matrix=None if m is None else m.ravel().tolist())
+            for ref, (m, quality) in zip(refs, states, strict=False)
+        ],
+        out_dir / "homographies.parquet",
+    )  # fmt: skip
     if cfg.pitch.minimap.enabled:
         start = time.perf_counter()
         render_minimap(

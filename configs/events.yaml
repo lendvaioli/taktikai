@@ -1,0 +1,77 @@
+# Events v1: rule-based pass and ball_loss detection from possession changes.
+# Shot and set piece are out of scope until own footage exists (docs/GOLDEN.md).
+# Tuned values (marked [tuned]) were chosen by leave-one-clip-out tuning on the dfl golden set
+# and then fixed on all five clips, so they are IN-SAMPLE: the honest estimate is the held-out
+# one in docs/EXPERIMENTS.md (2026-10-28: tuning runs 20261028T101757Z at b9466a4 and, for the
+# extended grid, 20261028T102721Z at da8b141; held-out pass F1 0.810). The grid
+# tie-break prefers values close to the ones below, so they also anchor future tuning.
+
+team_mapping:
+  crops_per_team: 40        # player crops per team cluster used to measure its kit colour
+  seed: 0                   # random sampling of those crops
+  palette:                  # kit colour names (configs/matches.yaml) -> sRGB; only the relative
+    fehér: [240, 240, 240]  # distance between the two clusters matters, so rough values suffice
+    fekete: [25, 25, 25]
+    szürke: [130, 130, 130]
+    piros: [200, 30, 40]
+    bordó: [110, 20, 40]
+    narancs: [240, 120, 30]
+    sárga: [240, 210, 40]
+    zöld: [30, 140, 60]
+    kék: [30, 60, 170]
+    világoskék: [110, 170, 230]
+    lila: [110, 50, 150]
+    rózsaszín: [240, 130, 180]
+
+ball:
+  airborne_mode: "off"      # [tuned; start: fixed] likely-airborne ball positions are ignored for possession:
+                            #   off        - no airborne check
+                            #   fixed      - size ratio (observed / expected ground-ball width)
+                            #                above airborne_size_ratio, or a speed spike
+                            #   calibrated - like fixed, but the ratio is first divided by the
+                            #                clip's median ratio of balls near a player's feet
+                            #                (detector boxes are wider than the ball)
+  airborne_size_ratio: 1.6  # airborne if the ball box is this many times wider than expected
+  calibration_near_m: 1.5   # calibrated: balls this close to a player count as ground balls
+  calibration_min_samples: 10  # calibrated: with fewer such balls, fall back to fixed
+  max_ground_speed_mps: 35.0  # airborne / projection error if the projected ball moves faster
+                              # than this relative to both neighbouring observations
+  ball_diameter_m: 0.22     # FIFA size-5 ball, used for the expected pixel width
+  max_interp_gap_sec: 0.4   # fill missing ground-ball positions linearly over gaps up to this
+
+possession:
+  control_radius_m: 2.0     # [tuned; start 1.5] nearest player within this distance of the ground ball controls it
+  min_hold_sec: 0.0         # [tuned; start 0.24] shorter control runs are flicker and are
+                            # merged away; 0 keeps every run (lowest grid value)
+
+rules:
+  max_transition_sec: 4.0   # [tuned; start 3.0, highest grid value] max time between two possessions for them to form an event
+  pass_min_ball_travel_m: 3.0  # [tuned; = start] same-team change counts as a pass only if the ball moved this
+                               # far; shorter changes are usually a broken track of one player
+  intercept_min_dist_m: 12.0 # [tuned; start 5.0, highest value of the extended grid] opponent change after the ball moved this far = intercepted pass
+                            # (pass + ball_loss); shorter = lost duel (ball_loss only)
+  pass_time_fraction: 0.0   # time a pass this fraction of the way from the passer's last to the
+                            # receiver's first possessed frame; tested (0 / 0.2 / 0.4), no
+                            # held-out gain on top of intercept_min_dist_m 12, so kept at 0
+
+diagnostics:                # error analysis only; the rules do not use these
+  observable_window_sec: 0.5     # a golden event is "ball-observable" if a ground ball is
+                                 # known within +-this of its time
+  track_break_max_gap_sec: 1.0   # a false pass is a "track break" if the receiver's track starts
+  track_break_max_dist_m: 2.0    # within this time and distance of where the passer's track ended
+  timing_near_sec: 5.0           # a missed event with a same-team prediction within this time
+                                 # (but beyond the eval tolerance) counts as a timing error
+
+split:                      # evaluation protocol: tune on 4 clips, evaluate on the 5th, rotate
+  method: leave_one_clip_out
+  set_id: dfl
+  clips: []                  # the clip ids are in configs/events.private.yaml (not published);
+                             # quote them: unquoted YAML reads a clip id like 123456_0 as a number
+
+grid:                       # tuning grid (make tune), objective: pass F1 on the training clips
+  possession.control_radius_m: [1.0, 1.5, 2.0, 3.0]
+  possession.min_hold_sec: [0.0, 0.16, 0.24, 0.48]
+  rules.max_transition_sec: [2.0, 3.0, 4.0, 5.0]
+  rules.intercept_min_dist_m: [3.0, 5.0, 8.0, 12.0]
+  rules.pass_min_ball_travel_m: [0.0, 3.0, 5.0]
+  ball.airborne_mode: ["off", fixed, calibrated]  # "off" quoted: YAML reads bare off as false

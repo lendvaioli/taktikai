@@ -54,7 +54,7 @@ def choose_set(golden_dir: Path) -> GoldenSet | None:
     existing = list_golden_sets(golden_dir)
     choice = st.sidebar.selectbox("Golden készlet", [*existing, "+ új készlet"])
     if choice != "+ új készlet":
-        return load_golden_set(golden_dir, choice)
+        return edit_source(load_golden_set(golden_dir, choice), golden_dir)
     set_id = st.sidebar.text_input("Készlet azonosító (pl. dfl)").strip()
     source = st.sidebar.text_input("Forrás (honnan származnak a klipek)")
     if not st.sidebar.button("Készlet létrehozása"):
@@ -65,6 +65,17 @@ def choose_set(golden_dir: Path) -> GoldenSet | None:
     golden = GoldenSet(set_id=set_id, source=source)
     save_golden_set(golden, golden_dir)
     st.rerun()
+    return golden
+
+
+def edit_source(golden: GoldenSet, golden_dir: Path) -> GoldenSet:
+    """Sidebar: edit the source description of an existing set; saved when it changes."""
+    source = st.sidebar.text_input(
+        "Forrás (honnan származnak a klipek)", golden.source, key=f"source-{golden.set_id}"
+    ).strip()
+    if source != golden.source:
+        golden = golden.model_copy(update={"source": source})
+        save_golden_set(golden, golden_dir)
     return golden
 
 

@@ -3,7 +3,14 @@ import pytest
 from pydantic import ValidationError
 
 from match_tagger.pitch.geometry import PitchDims
-from match_tagger.pitch.schema import PositionRecord, read_positions, write_positions
+from match_tagger.pitch.schema import (
+    HomographyRecord,
+    PositionRecord,
+    read_homographies,
+    read_positions,
+    write_homographies,
+    write_positions,
+)
 from match_tagger.pitch.summary import player_plausibility, quality_shares
 
 
@@ -41,6 +48,18 @@ def test_positions_round_trip(tmp_path):
     assert df["out_of_pitch"].tolist() == [False, True, False]
     assert df["track_id"].tolist() == [1, pd.NA, 1]
     assert df["x_m"].isna().tolist() == [False, False, True]
+
+
+def test_homographies_round_trip(tmp_path):
+    rows = [
+        HomographyRecord(frame=0, t_sec=0.0, h_quality="ok", matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1]),
+        HomographyRecord(frame=2, t_sec=0.08, h_quality="missing"),
+    ]
+    path = tmp_path / "homographies.parquet"
+    assert write_homographies(rows, path) == 2
+    assert read_homographies(path) == rows
+    with pytest.raises(ValidationError):
+        HomographyRecord(frame=0, t_sec=0.0, h_quality="reused")  # reused needs a matrix
 
 
 def test_quality_shares():

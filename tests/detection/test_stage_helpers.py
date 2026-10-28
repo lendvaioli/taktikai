@@ -71,8 +71,8 @@ def test_track_stability_median_span():
 
 
 def test_repo_configs_parse():
-    assert load_config("video", VideoConfig).stride_fps == 5.0
-    assert load_config("video", VideoConfig).detect_fps == 12.5
+    assert load_config("video", VideoConfig).stride_fps == 12.5
+    assert load_config("video", VideoConfig).detect_fps is None
     assert load_config("detection", DetectionConfig).conf == 0.3
     assert load_config("tracking", TrackingConfig).bytetrack.minimum_consecutive_frames == 3
     assert load_config("tracking", TrackingConfig).class_vote.goalkeeper_min_share == 0.3
@@ -82,4 +82,4 @@ def test_repo_configs_parse():
 def test_cli_rejects_unimplemented_stage(tmp_path):
     video = tmp_path / "x.mp4"
     video.write_bytes(b"")
-    assert main(["run", "--stage", "events", "--video", str(video)]) == 2
+    assert main(["run", "--stage", "clips", "--video", str(video)]) == 2

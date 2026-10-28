@@ -1,4 +1,8 @@
-"""Evaluation CLI: ``python -m match_tagger.evals.cli eval [--set ID]`` and ``compare A B``."""
+"""Evaluation CLI.
+
+``python -m match_tagger.evals.cli eval [--set ID]``, ``compare A B``, ``tune`` and
+``team-sheets``.
+"""
 
 import argparse
 import sys
@@ -6,7 +10,7 @@ from pathlib import Path
 
 from match_tagger.config import CONFIG_DIR, load_config
 from match_tagger.evals.golden import list_golden_sets, load_golden_set
-from match_tagger.evals.report import compare_runs, compare_table, set_table
+from match_tagger.evals.report import compare_runs, compare_table, fmt, set_table
 from match_tagger.evals.run import (
     EvalConfig,
     EvalRun,
@@ -16,17 +20,21 @@ from match_tagger.evals.run import (
     write_run,
 )
 
+REFERENCE_DIR = Path("evals/reference")
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(prog="match_tagger.evals")
+    parser.add_argument("--config-dir", type=Path, default=CONFIG_DIR)
     sub = parser.add_subparsers(dest="command", required=True)
     ev = sub.add_parser("eval", help="Evaluate predictions against golden sets.")
     ev.add_argument("--set", dest="set_id", help="Golden set id; default: all sets.")
-    ev.add_argument("--config-dir", type=Path, default=CONFIG_DIR)
     cmp = sub.add_parser("compare", help="Per-metric difference between two result files.")
     cmp.add_argument("a", type=Path)
     cmp.add_argument("b", type=Path)
+    sub.add_parser("tune", help="Leave-one-clip-out tuning of events v1 (configs/events.yaml).")
+    sub.add_parser("team-sheets", help="Contact sheets of the team-colour mapping per clip.")
     return parser.parse_args(argv)
 
 
@@ -58,12 +66,64 @@ def run_compare(a: Path, b: Path) -> int:
     return 0
 
 
+def run_tune(config_dir: Path) -> int:
+    """Run leave-one-clip-out tuning, print the summary and write the report."""
+    from match_tagger.evals.tuning_run import run_tuning, write_report
+    from match_tagger.events.stage import EventsStageConfig
+
+    cfg = EventsStageConfig.load(config_dir)
+    eval_cfg = load_config("evals", EvalConfig, config_dir)
+    report = run_tuning(cfg, eval_cfg, REFERENCE_DIR)
+    print(f"{'held out':<10} {'P':>6} {'R':>6} {'F1':>6}  params")
+    for f in report.folds:
+        print(
+            f"{f.held_out:<10} {fmt(f.held.precision):>6} {fmt(f.held.recall):>6} "
+            f"{fmt(f.held.f1):>6}  {f.params}"
+        )
+    h, s = report.held_out_pass, report.held_out_pass_spread
+    print(
+        f"pass, held-out micro: P {fmt(h.precision)} R {fmt(h.recall)} F1 {fmt(h.f1)} "
+        f"(TP {h.tp} FP {h.fp} FN {h.fn}); fold F1 mean {fmt(s.mean)} std {fmt(s.std)}"
+    )
+    print(f"final params (in-sample, NOT held-out): {report.final_params_in_sample}")
+    print(f"written: {write_report(report, eval_cfg.results_dir)}")
+    return 0
+
+
+def run_team_sheets(config_dir: Path) -> int:
+    """Write data/processed/<clip>/team_sheet.jpg for every clip of the tuning split."""
+    import cv2
+
+    from match_tagger.events.sheets import team_sheet
+    from match_tagger.events.stage import EventsStageConfig, load_clip
+
+    cfg = EventsStageConfig.load(config_dir)
+    golden = load_golden_set(
+        load_config("evals", EvalConfig, config_dir).golden_dir, cfg.events.split.set_id
+    )
+    for clip_id in cfg.events.split.clips:
+        video, match_dir = Path(golden.clip(clip_id).video), cfg.paths.paths.processed_dir / clip_id
+        kits = cfg.matches.matches[clip_id].kits
+        clip = load_clip(match_dir, video, kits, cfg.events)
+        sheet = team_sheet(video, match_dir, clip.mapping, kits, cfg.events.team_mapping.seed)
+        cv2.imwrite(str(match_dir / "team_sheet.jpg"), sheet)
+        print(
+            f"{clip_id}: {clip.mapping.mapping} margin {clip.mapping.margin:.1f} -> "
+            f"{match_dir / 'team_sheet.jpg'}"
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point."""
     args = parse_args(argv)
     if args.command == "eval":
         return run_eval(args.set_id, args.config_dir)
-    return run_compare(args.a, args.b)
+    if args.command == "compare":
+        return run_compare(args.a, args.b)
+    if args.command == "tune":
+        return run_tune(args.config_dir)
+    return run_team_sheets(args.config_dir)
 
 
 if __name__ == "__main__":

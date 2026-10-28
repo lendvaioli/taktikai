@@ -1,0 +1,14 @@
+# Per-match metadata provided by the analyst. Kits: colour names from the palette in
+# configs/events.yaml.
+# home_attacks: the goal the home team attacks, as seen in the video (left = towards x = 0,
+# right = towards x = length). Optional; without it metrics that need the direction of play
+# (pressing proxy, attack-relative zones) are reported as unavailable. A full match needs a
+# value per half: home_attacks: {1: left, 2: right}.
+# Entries for footage that must not be published go into configs/matches.private.yaml
+# (gitignored), which is merged over this file. Quote clip ids: YAML reads 123456_0 as a number.
+matches: {}
+# Example:
+# matches:
+#   "my_match":
+#     kits: {home: fehér, away: piros}
+#     home_attacks: {1: left, 2: right}

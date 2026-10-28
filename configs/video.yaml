@@ -1,6 +1,7 @@
 # Frame sampling for all video-reading stages.
-stride_fps: 5.0        # frames per second written to outputs
-detect_fps: 12.5       # frames per second run through detector + tracker; null = stride_fps
-                       # (see docs/EXPERIMENTS.md, 2026-10-27)
+stride_fps: 12.5       # frames per second written to outputs; 12.5 so possession and passes
+                       # (0.5-1 s long) are resolved (events v1, docs/EXPERIMENTS.md)
+detect_fps: null       # frames per second run through detector + tracker; null = stride_fps.
+                       # Tracking needs >= 12.5 fps for stable ids (docs/EXPERIMENTS.md)
 start_sec: 0.0         # start of the processed window
 duration_sec: null     # null = until the end of the video

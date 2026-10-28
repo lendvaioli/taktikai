@@ -71,6 +71,55 @@ def write_positions(records: Iterable[PositionRecord], path: Path) -> int:
     return table.num_rows
 
 
+class HomographyRecord(BaseModel):
+    """The image -> pitch homography used for one output frame (None when missing)."""
+
+    frame: int = Field(ge=0)
+    t_sec: float = Field(ge=0)
+    h_quality: Literal["ok", "reused", "missing"]
+    matrix: list[float] | None = Field(None, min_length=9, max_length=9, description="Row-major.")
+
+    @model_validator(mode="after")
+    def _check_matrix(self) -> "HomographyRecord":
+        if (self.matrix is None) != (self.h_quality == "missing"):
+            raise ValueError("matrix must be None exactly when h_quality is missing")
+        return self
+
+
+H_COLUMNS = [f"h{i}{j}" for i in range(3) for j in range(3)]
+H_ARROW_SCHEMA = pa.schema(
+    [("frame", pa.int32()), ("t_sec", pa.float64()), ("h_quality", pa.string())]
+    + [(c, pa.float64()) for c in H_COLUMNS]
+)
+
+
+def write_homographies(records: Iterable[HomographyRecord], path: Path) -> int:
+    """Write homographies.parquet: one row per output frame, 9 nullable matrix columns."""
+    rows = list(records)
+    columns: dict[str, list] = {
+        "frame": [r.frame for r in rows],
+        "t_sec": [r.t_sec for r in rows],
+        "h_quality": [r.h_quality for r in rows],
+    }
+    for k, name in enumerate(H_COLUMNS):
+        columns[name] = [r.matrix[k] if r.matrix else None for r in rows]
+    table = pa.Table.from_pydict(columns, schema=H_ARROW_SCHEMA)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table, path)
+    return table.num_rows
+
+
+def read_homographies(path: Path) -> list[HomographyRecord]:
+    """Read homographies.parquet back into validated records."""
+    out = []
+    for row in pq.read_table(path).to_pylist():
+        values = [row[c] for c in H_COLUMNS]
+        matrix = None if values[0] is None else values
+        out.append(HomographyRecord(frame=row["frame"], t_sec=row["t_sec"],
+                                    h_quality=row["h_quality"], matrix=matrix))  # fmt: skip
+    return out
+
+
 def read_positions(path: Path) -> pd.DataFrame:
     """Read positions.parquet with pandas nullable integer dtypes."""
     return pq.read_table(path).to_pandas(

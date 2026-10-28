@@ -6,7 +6,7 @@ from pathlib import Path
 
 from match_tagger.config import CONFIG_DIR
 
-IMPLEMENTED_STAGES = ("detection", "pitch")
+IMPLEMENTED_STAGES = ("detection", "pitch", "events")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -34,9 +34,12 @@ def run_stage(args: argparse.Namespace) -> int:
     if args.stage == "detection":
         from match_tagger.detection.stage import StageConfig as Config
         from match_tagger.detection.stage import run_detection as run
-    else:
+    elif args.stage == "pitch":
         from match_tagger.pitch.stage import PitchStageConfig as Config
         from match_tagger.pitch.stage import run_pitch as run
+    else:
+        from match_tagger.events.stage import EventsStageConfig as Config
+        from match_tagger.events.stage import run_events as run
 
     cfg = Config.load(args.config_dir)
     overrides = {"start_sec": args.start, "duration_sec": args.duration}

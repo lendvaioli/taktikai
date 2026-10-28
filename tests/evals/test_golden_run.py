@@ -79,7 +79,7 @@ def test_cli_eval_writes_results_and_leaves_golden_unchanged(tmp_path, capsys):
         "golden_dir": str(golden_dir), "results_dir": str(results_dir),
         "predictions": str(tmp_path / "pred" / "{clip_id}" / "events.json"),
     }))  # fmt: skip
-    assert main(["eval", "--set", "dfl", "--config-dir", str(config)]) == 0
+    assert main(["--config-dir", str(config), "eval", "--set", "dfl"]) == 0
     assert (golden_dir / "dfl.json").read_bytes() == before
     run = EvalRun.model_validate_json(next(results_dir.glob("*.json")).read_text())
     assert run.sets[0].per_type["pass"].tp == 1
