@@ -21,9 +21,10 @@ class OllamaConfig(BaseModel):
 class AnthropicConfig(BaseModel):
     """Anthropic API backend (optional; needs ANTHROPIC_API_KEY or another SDK credential)."""
 
-    model: str = "claude-opus-5-5"
+    model: str = "claude-haiku-5-5"
     max_tokens: int = Field(16000, gt=0)
     effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    server_fallback: bool = False  # refusal fallback; not offered for Haiku 5.5
 
 
 class ReportConfig(BaseModel):

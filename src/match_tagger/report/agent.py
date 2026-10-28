@@ -85,9 +85,20 @@ def _check(call: ToolCall, box: ToolBox, s: AgentSettings) -> tuple[Report | Non
     )
 
 
-def _feedback(errors: list[str]) -> str:
-    return "REJECTED. Fix only these problems and call submit_report again:\n- " + "\n- ".join(
-        errors
+def feedback(errors: list[str], has_video: bool) -> str:
+    """Rejection message: the problems, then the rules every report must follow."""
+    clips = (
+        "every finding cites at least one clip id that get_clips returned in this run"
+        if has_video
+        else "this match has no video: every finding has an empty clip_ids list"
+    )
+    return (
+        "REJECTED. Fix these problems and call submit_report again:\n- "
+        + "\n- ".join(errors)
+        + "\nRules for the whole report:\n"
+        "- 2 or 3 findings, each with title, claim, numbers, clip_ids and training\n"
+        f"- {clips}\n"
+        "- every number is copied from a tool result; leave out numbers no tool returned"
     )
 
 
@@ -124,7 +135,7 @@ def run_agent(
         messages.append(
             Message(
                 role="tool",
-                content=_feedback(errors),
+                content=feedback(errors, s.has_video),
                 tool_call_id=submit.id,
                 tool_name=submit.name,
             )

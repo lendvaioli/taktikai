@@ -104,7 +104,7 @@ class _FakeMessages:
         return self.response
 
 
-def _anthropic(stop_reason="tool_use"):
+def _anthropic(stop_reason="tool_use", cfg=None):
     content = [
         SimpleNamespace(type="text", text="Megnézem."),
         SimpleNamespace(
@@ -112,12 +112,12 @@ def _anthropic(stop_reason="tool_use"):
         ),
     ]
     response = SimpleNamespace(
-        content=content, stop_reason=stop_reason, model="claude-opus-5-5",
+        content=content, stop_reason=stop_reason, model="claude-haiku-5-5",
         usage=SimpleNamespace(input_tokens=500, output_tokens=40),
     )  # fmt: skip
     messages = _FakeMessages(response)
     return AnthropicBackend(
-        AnthropicConfig(), client=SimpleNamespace(beta=SimpleNamespace(messages=messages))
+        cfg or AnthropicConfig(), client=SimpleNamespace(beta=SimpleNamespace(messages=messages))
     ), messages
 
 
@@ -133,12 +133,20 @@ def test_anthropic_wire_format_with_mocked_client():
     ]  # fmt: skip
     out = backend.chat("sys", history, tool_specs())
     kw = fake.kwargs
-    assert kw["model"] == "claude-opus-5-5" and kw["system"] == "sys"
+    assert kw["model"] == "claude-haiku-5-5" and kw["system"] == "sys"
+    assert "fallbacks" not in kw and "betas" not in kw  # Haiku 5.5 has no server fallback
     assert kw["messages"][1] == {"role": "assistant", "content": raw}  # sent back unchanged
     results = kw["messages"][2]["content"]  # both results in one user message
     assert [r["tool_use_id"] for r in results] == ["tu_0", "tu_9"]
     assert kw["tools"][0]["input_schema"]["required"] == ["name", "team"]
     assert (out.text, out.tool_calls[0].id, out.input_tokens) == ("Megnézem.", "tu_1", 500)
+
+
+def test_anthropic_server_fallback_is_opt_in():
+    backend, fake = _anthropic(cfg=AnthropicConfig(model="claude-opus-5-5", server_fallback=True))
+    backend.chat("sys", [Message(role="user", content="u")], [])
+    assert fake.kwargs["fallbacks"] == "default"
+    assert fake.kwargs["betas"] == ["server-side-fallback-2026-07-01"]
 
 
 def test_anthropic_refusal_raises():

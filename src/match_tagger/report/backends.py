@@ -129,6 +129,11 @@ class AnthropicBackend:
 
     def chat(self, system: str, messages: Sequence[Message], tools: Sequence[ToolSpec]) -> LLMReply:
         """Call the model once; a refusal raises instead of returning an empty reply."""
+        fallback = (
+            {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+            if self.cfg.server_fallback
+            else {}
+        )
         started = time.perf_counter()
         resp = self.client.beta.messages.create(
             model=self.cfg.model,
@@ -140,8 +145,7 @@ class AnthropicBackend:
                 for t in tools
             ],
             output_config={"effort": self.cfg.effort},
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
+            **fallback,
         )
         if resp.stop_reason == "refusal":
             raise RuntimeError(f"model refused: {getattr(resp, 'stop_details', None)}")

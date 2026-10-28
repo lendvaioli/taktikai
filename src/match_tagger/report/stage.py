@@ -1,6 +1,7 @@
 """Report stage: metrics.json + reviewed events + clips -> report.json and report.md."""
 
 import hashlib
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -51,6 +52,12 @@ class ReportRun(BaseModel):
     output: str
 
 
+def prompt_version(prompt: str) -> str | None:
+    """The label of the "<!-- version: ... -->" comment of a prompt file, if any."""
+    match = re.search(r"<!--\s*version:\s*(.+?)\s*-->", prompt)
+    return match.group(1) if match else None
+
+
 def user_message(ctx: MatchContext) -> str:
     """The task message: match, teams, whether clips exist (numbers only via tools)."""
     video = "yes: cite clip ids from get_clips" if ctx.has_video else "no: leave clip_ids empty"
@@ -85,6 +92,7 @@ def run_report(
         "match_id": match_id,
         "backend": backend.name,
         "model": backend.model,
+        "prompt_version": prompt_version(prompt),
         "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest()[:16],
     }
     out_dir = match_dir / "report"

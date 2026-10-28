@@ -1,7 +1,8 @@
 import json
 
-from match_tagger.report.agent import AgentSettings, run_agent
+from match_tagger.report.agent import AgentSettings, feedback, run_agent
 from match_tagger.report.log import RunLog
+from match_tagger.report.stage import prompt_version
 
 from .conftest import ScriptedBackend, reply, report_args
 
@@ -93,3 +94,18 @@ def test_schema_error_counts_as_rejection(box, tmp_path):
     result = _run(backend, box, tmp_path, retries=0)
     assert result.status == "rejected"
     assert any(e.startswith("findings") for e in result.errors)
+
+
+def test_feedback_restates_the_rules():
+    with_video = feedback(["finding 2: cite at least one clip id from get_clips"], has_video=True)
+    assert with_video.startswith("REJECTED.")
+    assert "2 or 3 findings" in with_video
+    assert "at least one clip id that get_clips returned" in with_video
+    assert "empty clip_ids" in feedback(["x"], has_video=False)
+
+
+def test_prompt_version_label():
+    assert prompt_version("<!-- version: report_system v2 -->\n<!-- v1 (old) -->\ntext") == (
+        "report_system v2"
+    )
+    assert prompt_version("no header") is None
