@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -121,3 +122,20 @@ def test_undo_target_skips_undone_entries(tmp_path):
         {"action": "undo", "target_seq": 2},
     )
     assert undo_target(read_log(path)) == 1
+
+
+def test_old_log_without_new_event_fields_applies_to_regenerated_events(tmp_path):
+    # A line written before end_x_m/outcome existed: its before/after lack those fields.
+    old = {"id": E1.id, "t_sec": 3.0, "type": "pass", "team": "home", "x_m": 40.0, "y_m": 20.0,
+           "confidence": 0.8}  # fmt: skip
+    path = tmp_path / "m.jsonl"
+    line = {"seq": 1, "timestamp": "2026-10-28T10:00:00Z", "action": "change_team",
+            "event_id": E1.id, "before": old, "after": {**old, "team": "away"}}  # fmt: skip
+    path.write_text(json.dumps(line) + "\n", encoding="utf-8")
+    regenerated = E1.model_copy(update={"end_x_m": 60.0, "end_y_m": 30.0, "outcome": "complete"})
+    result = merge([regenerated, E2], read_log(path))
+    assert result.conflicts == []
+    changed = result.events[0]
+    assert (changed.team, changed.end_x_m, changed.outcome) == ("away", 60.0, "complete")
+    stale = E1.model_copy(update={"x_m": 41.0})  # a logged field differs -> still a conflict
+    assert len(merge([stale, E2], read_log(path)).conflicts) == 1

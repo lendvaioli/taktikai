@@ -80,10 +80,18 @@ class EventsConfig(BaseModel):
         return EventsConfig.model_validate(data)
 
 
+Side = Literal["left", "right"]
+
+
 class MatchInfo(BaseModel):
-    """Per-match metadata provided by the analyst."""
+    """Per-match metadata provided by the analyst.
+
+    ``home_attacks``: the goal the home team attacks as seen in the video, for the whole clip
+    or per period ({1: "left", 2: "right"}); None if unknown.
+    """
 
     kits: dict[Team, str]
+    home_attacks: Side | dict[int, Side] | None = None
 
 
 class MatchesConfig(BaseModel):

@@ -124,6 +124,18 @@ def _undone(entries: Sequence[CorrectionEntry], conflicts: list[Conflict]) -> se
     return undone
 
 
+def _matches_before(current: Event | None, before: Event) -> bool:
+    """True if ``current`` equals ``before`` on every field the log entry recorded.
+
+    Fields added to ``Event`` after the entry was written are not in its JSON, so they do not
+    count: an old log still applies to events.json regenerated with the new fields.
+    """
+    logged = before.model_fields_set
+    return current is not None and current.model_dump(include=logged) == before.model_dump(
+        include=logged
+    )
+
+
 def _apply(e: CorrectionEntry, state: dict[str, Event], status: dict[str, Status]) -> str | None:
     """Apply one entry in place; return a conflict reason instead if it does not fit."""
     if e.action == "add":
@@ -131,7 +143,7 @@ def _apply(e: CorrectionEntry, state: dict[str, Event], status: dict[str, Status
             return f"event {e.event_id} already exists"
         state[e.event_id], status[e.event_id] = e.after, "added"
         return None
-    if state.get(e.event_id) != e.before:
+    if not _matches_before(state.get(e.event_id), e.before):
         return f"event {e.event_id} is not in the state the entry expects"
     if e.action == "delete":
         del state[e.event_id]
@@ -141,7 +153,8 @@ def _apply(e: CorrectionEntry, state: dict[str, Event], status: dict[str, Status
             "accepted" if status[e.event_id] == "unreviewed" else status[e.event_id]
         )
     else:
-        state[e.event_id] = e.after
+        field = _CHANGED_FIELD[e.action]
+        state[e.event_id] = state[e.event_id].model_copy(update={field: getattr(e.after, field)})
         status[e.event_id] = "added" if status[e.event_id] == "added" else "corrected"
     return None
 

@@ -42,7 +42,8 @@ def events_from_segments(
     ball travelled >= intercept_min_dist_m it was an intercepted pass, so a pass is added too.
     A pass is located at the ball in A's last frame and timed ``pass_time_fraction`` of the way
     from A's last to B's first frame (the ball leaves the foot after the last possessed frame).
-    Transitions longer than max_transition_sec are ignored.
+    It ends at the ball in B's first frame and is complete if B is a teammate. Transitions
+    longer than max_transition_sec are ignored.
     """
     events: list[Event] = []
     for a, b in zip(segs, segs[1:], strict=False):
@@ -56,8 +57,16 @@ def events_from_segments(
         )
         if is_pass:
             t_pass = times[a.end] + rules.pass_time_fraction * (times[b.start] - times[a.end])
+            ev = _event(clip_id, len(events), "pass", a, a.end, times, ball_xy, conf, t_pass)
+            end_x, end_y = ball_xy[b.start]
             events.append(
-                _event(clip_id, len(events), "pass", a, a.end, times, ball_xy, conf, t_pass)
+                ev.model_copy(
+                    update={
+                        "end_x_m": round(float(end_x), 2),
+                        "end_y_m": round(float(end_y), 2),
+                        "outcome": "complete" if a.team == b.team else "incomplete",
+                    }
+                )
             )
         if a.team != b.team:
             events.append(
