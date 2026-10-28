@@ -8,7 +8,7 @@
 - English: whole words from a configured list, metric keys (words with an underscore) and team
   names that have a different Hungarian label.
 - Sources: every supporting number names a tool call of the run and a field path; the value
-  must equal that field exactly.
+  must equal that field exactly. A rejection lists the paths where the value does occur.
 """
 
 import re
@@ -17,7 +17,7 @@ from typing import Any
 
 from match_tagger.report.config import SemanticsConfig
 from match_tagger.report.numbers import as_number, numbers_in_text
-from match_tagger.report.schema import SupportingNumber, ToolCall
+from match_tagger.report.schema import NumberSource, SupportingNumber, ToolCall
 
 SENTENCE_END = re.compile(r"(?<!\d)[.!?;](?!\d)|\n")
 WORD = re.compile(r"[^\W\d_]+")
@@ -103,10 +103,53 @@ def resolve(node: object, path: str) -> object:
     return node
 
 
+def _same(a: object, value: float) -> bool:
+    is_number = isinstance(a, int | float) and not isinstance(a, bool)
+    return is_number and abs(a - value) <= 1e-9 * max(1.0, abs(a))
+
+
+def paths_with_value(node: object, value: float, prefix: str = "") -> list[str]:
+    """Every dot path in a tool result whose field equals ``value`` exactly."""
+    if _same(node, value):
+        return [prefix]
+    items = (
+        node.items()
+        if isinstance(node, dict)
+        else enumerate(node)
+        if isinstance(node, list)
+        else []
+    )
+    found = []
+    for key, child in items:
+        found += paths_with_value(child, value, f"{prefix}.{key}" if prefix else str(key))
+    return found
+
+
+def value_hint(value: float, calls: list[tuple[ToolCall, dict]], limit: int = 5) -> str:
+    """Where in this run's tool results the value occurs (at most ``limit`` places)."""
+    places = [
+        NumberSource(tool=c.name, arguments=c.arguments, path=p).describe()
+        for c, result in calls
+        if c.name in ("get_metric", "get_events", "get_clips")
+        for p in paths_with_value(result, value)
+    ]
+    if not places:
+        return f"; {value:g} occurs in no tool result of this run"
+    more = f" (+{len(places) - limit} more)" if len(places) > limit else ""
+    return f"; {value:g} is found at: " + "; ".join(places[:limit]) + more
+
+
 def source_error(
     number: SupportingNumber, calls: list[tuple[ToolCall, dict]], normalize: Normalize
 ) -> str | None:
-    """Why a supporting number does not match its source field (None if it does)."""
+    """Why a supporting number does not match its source field (None if it does), with a hint."""
+    problem = _source_problem(number, calls, normalize)
+    return None if problem is None else problem + value_hint(number.value, calls)
+
+
+def _source_problem(
+    number: SupportingNumber, calls: list[tuple[ToolCall, dict]], normalize: Normalize
+) -> str | None:
     src = number.source
     wanted = normalize(src.tool, src.arguments)
     results = [
@@ -120,9 +163,8 @@ def source_error(
             actual = resolve(result, src.path)
         except KeyError:
             continue
-        if isinstance(actual, int | float) and not isinstance(actual, bool):
-            if abs(actual - number.value) <= 1e-9 * max(1.0, abs(actual)):
-                return None
+        if _same(actual, number.value):
+            return None
     if actual is None:
         return f'"{number.label}": {src.describe()} has no field "{src.path}"'
     return f'"{number.label}": value {number.value:g} but {src.describe()} is {actual}'

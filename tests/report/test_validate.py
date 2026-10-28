@@ -55,9 +55,10 @@ def test_tool_values_reads_numbers_numeric_strings_and_keys():
 def test_fabricated_number_in_free_text_is_reported():
     good = Report.model_validate(report_args())
     assert validate_report(good, _input()).errors == []
-    bad = Report.model_validate(report_args(note_minutes="90"))
-    assert validate_report(bad, _input()).errors == [
-        "sample_note: 90 does not appear in any tool result"
+    bad_args = report_args()
+    bad_args["findings"][0]["claim"] = "A hazai csapat 90 percen át 3 labdát veszített."
+    assert validate_report(Report.model_validate(bad_args), _input()).errors == [
+        "finding 1 claim: 90 does not appear in any tool result"
     ]
     fabricated = report_args()
     fabricated["findings"][1]["training"] = "Heti 4 alkalommal."

@@ -20,7 +20,7 @@ from match_tagger.report.schema import Message, Report, ToolCall
 from match_tagger.report.tools import SUBMIT_SPEC, ToolBox, normalize_arguments, tool_specs
 from match_tagger.report.validate import Validation, ValidationInput, validate_report
 
-Status = Literal["ok", "rejected", "max_steps"]
+Status = Literal["ok", "rejected", "max_steps", "error"]
 NUDGE = "Use a tool, or call submit_report with the final report."
 
 
@@ -126,7 +126,12 @@ def run_agent(
     retries_left = s.retries
     for step in range(1, s.max_steps + 1):
         tools = [SUBMIT_SPEC] if step == s.max_steps else [*tool_specs(), SUBMIT_SPEC]
-        reply = backend.chat(system, messages, tools)
+        try:
+            reply = backend.chat(system, messages, tools)
+        except (OSError, RuntimeError) as exc:  # timeout, connection, refusal
+            reason = f"backend error at step {step}: {type(exc).__name__}: {exc}"
+            log.end("error", step, [reason])
+            return AgentResult(status="error", report=None, errors=[reason], steps=step)
         messages.append(
             Message(
                 role="assistant", content=reply.text, tool_calls=reply.tool_calls, raw=reply.raw

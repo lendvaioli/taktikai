@@ -99,7 +99,7 @@ def reply(*calls: tuple[str, dict], text: str = "") -> LLMReply:
 SUMMARY_HOME = {"name": "summary", "team": "home"}
 
 
-def report_args(loss_count: float = 3, clip: str = "m-e3", note_minutes: str = "10") -> dict:
+def report_args(loss_count: float = 3, clip: str = "m-e3") -> dict:
     """A report whose numbers all come from get_metric summary (home): 3 ball losses."""
     source = {"tool": "get_metric", "arguments": SUMMARY_HOME, "path": "summary.ball_losses"}
     finding = {
@@ -111,6 +111,5 @@ def report_args(loss_count: float = 3, clip: str = "m-e3", note_minutes: str = "
     }
     return {
         "match_id": "m",
-        "sample_note": f"{note_minutes} perc, 6 esemény: nagyon kevés adat.",
         "findings": [finding, {**finding, "title": "Második megfigyelés"}],
     }

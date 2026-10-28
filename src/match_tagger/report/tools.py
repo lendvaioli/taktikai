@@ -14,10 +14,10 @@ from match_tagger.events.schema import EVENT_TYPES, Event, EventType, Team
 from match_tagger.metrics.context import team_labels_hu
 from match_tagger.metrics.frame import event_zone
 from match_tagger.metrics.stage import METRIC_NAMES, MatchMetrics
+from match_tagger.report.sample_note import RELIABILITY_HU
 from match_tagger.report.schema import Report, ToolCall, ToolSpec
 
 TEAM_SCHEMA = {"type": "string", "enum": ["home", "away"]}
-RELIABILITY_HU = {"very_low": "nagyon alacsony", "low": "alacsony", "ok": "megfelelő"}
 THIRD_LANE_LABELS_HU = {
     "own": "saját harmad",
     "middle": "középső harmad",

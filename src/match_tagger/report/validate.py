@@ -1,6 +1,6 @@
 """Report validator: schema-valid reports are checked against the tool results of their run.
 
-1. Every number in the free text (sample note, titles, claims, training, labels) must appear in
+1. Every number in the free text (titles, claims, training, labels) must appear in
    some tool result (``numbers.matches``).
 2. Every supporting number must equal the field its ``source`` names (``semantics``).
 3. Comparisons must have the right direction; no English words, metric keys or untranslated
@@ -45,7 +45,7 @@ class Validation:
 
 def report_texts(report: Report) -> list[tuple[str, str]]:
     """(where, text) of every free-text field of a report."""
-    texts = [("sample_note", report.sample_note)]
+    texts: list[tuple[str, str]] = []
     for i, f in enumerate(report.findings, 1):
         texts += [(f"finding {i} title", f.title), (f"finding {i} claim", f.claim)]
         texts += [(f"finding {i} training", f.training)]

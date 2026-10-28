@@ -1,6 +1,8 @@
 """Hungarian Markdown rendering of a validated report."""
 
 from match_tagger.metrics.context import MatchContext, team_labels_hu
+from match_tagger.metrics.sample import Sample
+from match_tagger.report.sample_note import sample_note
 from match_tagger.report.schema import Report, SupportingNumber
 
 
@@ -13,13 +15,13 @@ def _number_line(n: SupportingNumber) -> str:
     return f"- {n.label}: {_number(n.value)}{unit} *(forrás: `{n.source.describe()}`)*"
 
 
-def render_markdown(report: Report, ctx: MatchContext, generated_by: str) -> str:
-    """report.md: sample note, findings with sourced numbers, clip links and training focus."""
+def render_markdown(report: Report, ctx: MatchContext, sample: Sample, generated_by: str) -> str:
+    """report.md: sample note (written by code), findings with sourced numbers, clips, training."""
     teams = team_labels_hu(ctx)
     lines = [
         f"# Elemzői riport: {teams['home']} – {teams['away']}",
         "",
-        f"**Mintaméret:** {report.sample_note}",
+        f"**Mintaméret:** {sample_note(sample)}",
         "",
     ]
     for i, f in enumerate(report.findings, 1):

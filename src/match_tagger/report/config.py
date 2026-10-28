@@ -14,7 +14,7 @@ class OllamaConfig(BaseModel):
     host: str = "http://127.0.0.1:11434"
     model: str = "hf.co/Qwen/Qwen3-8B-GGUF:Q4_K_M"
     think: bool = False
-    timeout_sec: float = Field(900.0, gt=0)
+    timeout_sec: float = Field(300.0, gt=0)
     options: dict[str, Any] = Field(default_factory=dict)
 
 

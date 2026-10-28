@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     import anthropic
 
 Post = Callable[[str, dict[str, Any], float], dict[str, Any]]
+Get = Callable[[str, float], dict[str, Any]]
+OLLAMA_TIMINGS = ("load_duration", "prompt_eval_duration", "eval_duration", "total_duration")
 
 
 class LLMBackend(Protocol):
@@ -41,14 +43,40 @@ def http_post(url: str, body: dict[str, Any], timeout: float) -> dict[str, Any]:
         return json.loads(resp.read())
 
 
+def http_get(url: str, timeout: float) -> dict[str, Any]:
+    """GET and parse a JSON response (stdlib only)."""
+    with urllib.request.urlopen(url, timeout=timeout) as resp:  # noqa: S310 (local server)
+        return json.loads(resp.read())
+
+
+def ollama_timings_ms(resp: dict[str, Any]) -> dict[str, float]:
+    """Ollama's own durations of a call (nanoseconds in the API) in milliseconds."""
+    return {
+        k.removesuffix("_duration") + "_ms": round(resp[k] / 1e6, 1)
+        for k in OLLAMA_TIMINGS
+        if k in resp
+    }
+
+
 class OllamaBackend:
     """Ollama /api/chat with native tool calling (docs: ollama/docs/api.md)."""
 
     name = "ollama"
 
-    def __init__(self, cfg: OllamaConfig, post: Post = http_post) -> None:
-        """Keep the config and the HTTP function."""
-        self.cfg, self.post, self.model = cfg, post, cfg.model
+    def __init__(self, cfg: OllamaConfig, post: Post = http_post, get: Get = http_get) -> None:
+        """Keep the config and the HTTP functions."""
+        self.cfg, self.post, self.get, self.model = cfg, post, get, cfg.model
+
+    def gpu_share(self) -> float | None:
+        """Share of the loaded model in GPU memory (/api/ps: size_vram / size); None if unknown."""
+        try:
+            loaded = self.get(f"{self.cfg.host}/api/ps", 10.0).get("models", [])
+        except OSError:
+            return None
+        model = next((m for m in loaded if m.get("name") == self.cfg.model), None)
+        if not model or not model.get("size"):
+            return None
+        return round(model.get("size_vram", 0) / model["size"], 3)
 
     @staticmethod
     def _message(m: Message) -> dict[str, Any]:
@@ -86,6 +114,8 @@ class OllamaBackend:
             output_tokens=resp.get("eval_count"),
             latency_ms=round((time.perf_counter() - started) * 1000, 1),
             model=resp.get("model", self.cfg.model),
+            backend_timings_ms=ollama_timings_ms(resp),
+            gpu_share=self.gpu_share(),
         )
 
 

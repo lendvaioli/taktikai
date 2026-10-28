@@ -6,6 +6,7 @@ from match_tagger.report.schema import NumberSource, SupportingNumber, ToolCall
 from match_tagger.report.semantics import (
     check_comparisons,
     english_errors,
+    paths_with_value,
     resolve,
     sentences,
     source_error,
@@ -106,6 +107,8 @@ def test_source_rejects_the_v2_wrong_meaning():
     assert source_error(wrong, CALLS, normalize_arguments) == (
         '"labdavesztések a középső harmadban": value 3 but '
         "get_metric(name=ball_losses_by_zone, team=home) -> thirds.middle.count is 4"
+        "; 3 is found at: get_metric(name=ball_losses_by_zone, team=home) -> "
+        "zones.middle_centre.count"
     )
     right = _num("labdavesztések a középső harmadban", 4, "thirds.middle.count")
     assert source_error(right, CALLS, normalize_arguments) is None
@@ -126,3 +129,32 @@ def test_source_needs_a_call_of_this_run_and_an_existing_field():
     assert source_error(reordered, CALLS, normalize_arguments) is None
     share_as_percent = _num("x", 66.7, "thirds.middle.share")
     assert "is 0.667" in source_error(share_as_percent, CALLS, normalize_arguments)
+
+
+def test_hint_names_the_path_from_the_v3_sb_failure():
+    # v3 sb_8658: source path "pass_completion_share" instead of "summary.pass_completion_share"
+    summary = {"summary": {"passes": 249, "pass_completion_share": 0.703}, "has_video": False}
+    calls = [
+        (
+            ToolCall(id="c0", name="get_metric", arguments={"name": "summary", "team": "home"}),
+            summary,
+        )
+    ]
+    cited = _num(
+        "passzpontosság", 0.703, "pass_completion_share", args={"name": "summary", "team": "home"}
+    )
+    error = source_error(cited, calls, normalize_arguments)
+    assert error.endswith(
+        "0.703 is found at: get_metric(name=summary, team=home) -> summary.pass_completion_share"
+    )
+    nowhere = _num(
+        "passzpontosság", 0.5, "pass_completion_share", args={"name": "summary", "team": "home"}
+    )
+    assert source_error(nowhere, calls, normalize_arguments).endswith(
+        "0.5 occurs in no tool result of this run"
+    )
+
+
+def test_paths_with_value_walks_lists_and_ignores_bools():
+    data = {"a": [1, {"b": 1.0}], "c": True, "d": "1"}
+    assert paths_with_value(data, 1) == ["a.0", "a.1.b"]

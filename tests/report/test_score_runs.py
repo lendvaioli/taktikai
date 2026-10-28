@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 
 import pytest
 
+from match_tagger.metrics.config import ReliabilityConfig
 from match_tagger.metrics.context import MatchContext
+from match_tagger.metrics.sample import Sample
 from match_tagger.report.render import render_markdown
 from match_tagger.report.runs import RunRecord, all_records, write_record
 from match_tagger.report.schema import Report
@@ -99,7 +101,17 @@ def test_render_uses_hungarian_team_labels_and_shows_sources():
         teams_hu={"home": "Franciaország", "away": "Horvátország"}, has_video=False,
         attribution="Adatforrás: StatsBomb Open Data",
     )  # fmt: skip
-    md = render_markdown(Report.model_validate(report_args()), ctx, "ollama / qwen")
+    sample = Sample(
+        duration_sec=5703.8,
+        duration_min=95.1,
+        n_events=975,
+        events_per_type={"pass": 769, "ball_loss": 105},
+        reliability="ok",
+        thresholds=ReliabilityConfig(),
+    )
+    md = render_markdown(Report.model_validate(report_args()), ctx, sample, "ollama / qwen")
+    note = "**Mintaméret:** 95,1 perc, 975 esemény (769 passz, 105 labdavesztés). "
+    assert note + "Megbízhatóság: megfelelő" in md
     assert md.startswith("# Elemzői riport: Franciaország – Horvátország")
     assert "France" not in md
     assert (

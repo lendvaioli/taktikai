@@ -54,6 +54,8 @@ class RunLog:
                 "step": step,
                 "model": reply.model,
                 "latency_ms": reply.latency_ms,
+                "backend_timings_ms": reply.backend_timings_ms,
+                "gpu_share": reply.gpu_share,
                 "input_tokens": reply.input_tokens,
                 "output_tokens": reply.output_tokens,
                 "text_chars": len(reply.text),

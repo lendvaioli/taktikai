@@ -21,7 +21,9 @@ ollama:
   host: http://127.0.0.1:11434        # local server only
   model: hf.co/Qwen/Qwen3-8B-GGUF:Q4_K_M   # Apache-2.0, pulled from the Hugging Face Hub
   think: false                        # Qwen3 non-thinking mode
-  timeout_sec: 900
+  timeout_sec: 300                    # per request: no answer within this time -> run ends with
+                                      # status "error" (slowest call so far: 108 s). A suspended
+                                      # machine (sleep) pauses the timer: keep the PC awake.
   options:                            # model card's non-thinking settings, plus a fixed seed
     temperature: 0.7
     top_p: 0.8

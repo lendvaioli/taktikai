@@ -81,10 +81,13 @@ def foreign_team_names(ctx: MatchContext) -> list[str]:
     return [name for t, name in ctx.teams.items() if name != labels[t]]
 
 
-def _write_outputs(match_dir: Path, result: AgentResult, ctx: MatchContext, header: dict) -> Path:
+def _write_outputs(
+    match_dir: Path, result: AgentResult, metrics: MatchMetrics, header: dict
+) -> Path:
     """Run record (+ markdown); copies of an accepted report as report.json / report.md."""
     by = f"{header['backend']} / {header['model']}"
-    markdown = render_markdown(result.report, ctx, by) if result.report else None
+    ctx = metrics.context
+    markdown = render_markdown(result.report, ctx, metrics.sample, by) if result.report else None
     record = RunRecord(
         **header,
         created_at=datetime.now(UTC).replace(microsecond=0),
@@ -138,7 +141,7 @@ def run_report(
         foreign_names=foreign_team_names(metrics.context),
     )
     result = run_agent(backend, prompt, user_message(metrics.context), box, settings, log)
-    output = _write_outputs(match_dir, result, metrics.context, header)
+    output = _write_outputs(match_dir, result, metrics, header)
     return ReportRun(
         match_id=match_id, run_id=run_id, backend=backend.name, model=backend.model,
         status=result.status, steps=result.steps, errors=result.errors, output=str(output),

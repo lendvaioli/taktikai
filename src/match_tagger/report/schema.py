@@ -42,10 +42,12 @@ class Finding(BaseModel):
 
 
 class Report(BaseModel):
-    """Structured output of the report agent (Hungarian text)."""
+    """Structured output of the report agent (Hungarian text).
+
+    The sample note is not part of it: code writes it from the sample block (``sample_note``).
+    """
 
     match_id: str
-    sample_note: str = Field(min_length=1)
     findings: list[Finding] = Field(min_length=2, max_length=3)
 
 
@@ -89,4 +91,6 @@ class LLMReply(BaseModel):
     output_tokens: int | None = None
     latency_ms: float
     model: str
+    backend_timings_ms: dict[str, float] | None = None  # e.g. Ollama load / prompt_eval / eval
+    gpu_share: float | None = None  # share of the loaded model in GPU memory (Ollama)
     raw: Any = Field(None, exclude=True)
