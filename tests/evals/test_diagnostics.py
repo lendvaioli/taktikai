@@ -59,3 +59,13 @@ def test_real_pass_between_teammates_is_not_a_track_break():
     clip = make_clip(31, players, ball)
     det = detect_events(clip, EventsConfig())
     assert false_pass_causes(det.events, clip, det, DIAG) == {"other": 1}
+
+
+def test_track_break_found_when_pass_is_timed_inside_the_transition():
+    ball = {**hold(range(0, 13), (10.5, 10)), **hold(range(18, 31), (10.5, 10))}
+    players = {1: ("home", range(0, 13), (10, 10)), 2: ("home", range(18, 31), (10, 10))}
+    clip = make_clip(31, players, ball)
+    params = {"rules.pass_min_ball_travel_m": 0.0, "rules.pass_time_fraction": 0.5}
+    det = detect_events(clip, EventsConfig().with_params(params))
+    assert [e.t_sec for e in det.events] == [1.2]
+    assert false_pass_causes(det.events, clip, det, DIAG) == {"track_break": 1}

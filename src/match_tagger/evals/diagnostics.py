@@ -53,9 +53,14 @@ def miss_cause(
 
 
 def pass_pair(event: Event, segs: Sequence[Segment], times: np.ndarray) -> tuple[Segment, Segment]:
-    """The possession segments A -> B that produced a pass event (A ends at the pass time)."""
+    """The possession segments A -> B that produced a pass event.
+
+    A pass is timed between A's last and B's first frame (``rules.pass_time_fraction``), and
+    transitions do not overlap, so the pair whose transition contains the pass time is unique.
+    """
     for a, b in zip(segs, segs[1:], strict=False):
-        if abs(round(float(times[a.end]), 2) - event.t_sec) < 1e-6:
+        start, end = round(float(times[a.end]), 2), round(float(times[b.start]), 2)
+        if a.team == event.team and start - 1e-6 <= event.t_sec <= end + 1e-6:
             return a, b
     raise ValueError(f"No segment pair for event {event.id}")
 

@@ -33,7 +33,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     cmp = sub.add_parser("compare", help="Per-metric difference between two result files.")
     cmp.add_argument("a", type=Path)
     cmp.add_argument("b", type=Path)
-    sub.add_parser("tune", help="Leave-one-clip-out tuning of events v1 (configs/events.yaml).")
+    tune = sub.add_parser(
+        "tune", help="Leave-one-clip-out tuning of events v1 (configs/events.yaml)."
+    )
+    tune.add_argument("--label", help="Short name stored in the report, e.g. a variant name.")
     sub.add_parser("team-sheets", help="Contact sheets of the team-colour mapping per clip.")
     return parser.parse_args(argv)
 
@@ -66,14 +69,14 @@ def run_compare(a: Path, b: Path) -> int:
     return 0
 
 
-def run_tune(config_dir: Path) -> int:
+def run_tune(config_dir: Path, label: str | None = None) -> int:
     """Run leave-one-clip-out tuning, print the summary and write the report."""
     from match_tagger.evals.tuning_run import run_tuning, write_report
     from match_tagger.events.stage import EventsStageConfig
 
     cfg = EventsStageConfig.load(config_dir)
     eval_cfg = load_config("evals", EvalConfig, config_dir)
-    report = run_tuning(cfg, eval_cfg, REFERENCE_DIR)
+    report = run_tuning(cfg, eval_cfg, REFERENCE_DIR, label)
     print(f"{'held out':<10} {'P':>6} {'R':>6} {'F1':>6}  params")
     for f in report.folds:
         print(
@@ -140,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "compare":
         return run_compare(args.a, args.b)
     if args.command == "tune":
-        return run_tune(args.config_dir)
+        return run_tune(args.config_dir, args.label)
     return run_team_sheets(args.config_dir)
 
 

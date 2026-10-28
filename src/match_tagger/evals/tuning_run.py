@@ -112,6 +112,8 @@ class TuningReport(BaseModel):
 
     created_at: datetime
     git_commit: str | None
+    label: str | None = None
+    grid: dict[str, list[Any]] = {}
     set_id: str
     clips: list[str]
     tolerance_sec: float
@@ -294,7 +296,9 @@ def observability(obs: Counter, window: float) -> Observability:
     )
 
 
-def run_tuning(cfg: EventsStageConfig, eval_cfg: EvalConfig, reference_dir: Path) -> TuningReport:
+def run_tuning(
+    cfg: EventsStageConfig, eval_cfg: EvalConfig, reference_dir: Path, label: str | None = None
+) -> TuningReport:
     """Score the grid, run the folds, analyse errors and assemble the report."""
     set_id, tol = cfg.events.split.set_id, eval_cfg.tolerance_sec
     golden = load_golden_set(eval_cfg.golden_dir, set_id)
@@ -313,6 +317,8 @@ def run_tuning(cfg: EventsStageConfig, eval_cfg: EvalConfig, reference_dir: Path
     return TuningReport(
         created_at=datetime.now(UTC).replace(microsecond=0),
         git_commit=git_commit(),
+        label=label,
+        grid=cfg.events.grid,
         set_id=set_id,
         clips=ids,
         tolerance_sec=tol,

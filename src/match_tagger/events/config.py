@@ -40,6 +40,7 @@ class RulesConfig(BaseModel):
     max_transition_sec: float = Field(3.0, gt=0)
     pass_min_ball_travel_m: float = Field(3.0, ge=0)
     intercept_min_dist_m: float = Field(5.0, ge=0)
+    pass_time_fraction: float = Field(0.0, ge=0, le=1)
 
 
 class DiagnosticsConfig(BaseModel):

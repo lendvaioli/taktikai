@@ -37,10 +37,12 @@ def events_from_segments(
 ) -> list[Event]:
     """Turn consecutive possession segments A -> B into events.
 
-    Same team: a pass at A's last frame if the ball travelled >= pass_min_ball_travel_m (a
-    shorter "pass" is most likely a broken track of one player). Other team: a ball_loss at B's
-    first frame; if the ball travelled >= intercept_min_dist_m it was an intercepted pass, so a
-    pass at A's last frame is added too. Transitions longer than max_transition_sec are ignored.
+    Same team: a pass if the ball travelled >= pass_min_ball_travel_m (a shorter "pass" is most
+    likely a broken track of one player). Other team: a ball_loss at B's first frame; if the
+    ball travelled >= intercept_min_dist_m it was an intercepted pass, so a pass is added too.
+    A pass is located at the ball in A's last frame and timed ``pass_time_fraction`` of the way
+    from A's last to B's first frame (the ball leaves the foot after the last possessed frame).
+    Transitions longer than max_transition_sec are ignored.
     """
     events: list[Event] = []
     for a, b in zip(segs, segs[1:], strict=False):
@@ -53,7 +55,10 @@ def events_from_segments(
             a.team != b.team and travel >= rules.intercept_min_dist_m
         )
         if is_pass:
-            events.append(_event(clip_id, len(events), "pass", a, a.end, times, ball_xy, conf))
+            t_pass = times[a.end] + rules.pass_time_fraction * (times[b.start] - times[a.end])
+            events.append(
+                _event(clip_id, len(events), "pass", a, a.end, times, ball_xy, conf, t_pass)
+            )
         if a.team != b.team:
             events.append(
                 _event(clip_id, len(events), "ball_loss", a, b.start, times, ball_xy, conf)
@@ -70,11 +75,13 @@ def _event(
     times: np.ndarray,
     ball_xy: np.ndarray,
     conf: float,
+    t_sec: float | None = None,
 ) -> Event:
+    """Event located at the ball in ``frame``; timed at ``t_sec`` (default: that frame)."""
     x, y = ball_xy[frame]
     return Event(
         id=f"{clip_id}-e{n:04d}",
-        t_sec=round(float(times[frame]), 2),
+        t_sec=round(float(times[frame] if t_sec is None else t_sec), 2),
         type=type_,
         team=actor.team,
         x_m=round(float(x), 2),

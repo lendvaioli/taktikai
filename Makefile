@@ -22,7 +22,7 @@ eval-compare:
 	uv run python -m match_tagger.evals.cli compare $(A) $(B)
 
 tune:
-	uv run python -m match_tagger.evals.cli tune
+	uv run python -m match_tagger.evals.cli tune $(if $(LABEL),--label $(LABEL))
 
 team-sheets:
 	uv run python -m match_tagger.evals.cli team-sheets

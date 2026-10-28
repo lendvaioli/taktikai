@@ -82,3 +82,19 @@ def test_transition_longer_than_limit_gives_no_event():
     ball = {**hold(range(0, 13), (10.5, 10)), **hold(range(63, 76), (19.5, 10))}
     players = {1: ("home", range(0, 80), (10, 10)), 2: ("home", range(0, 80), (20, 10))}
     assert detect_events(make_clip(76, players, ball), CFG).events == []
+
+
+def test_pass_time_fraction_moves_the_pass_into_the_transition():
+    # A ends at frame 12 (0.96 s), B starts at frame 18 (1.44 s): 0.96 + 0.25 x 0.48 = 1.08 s
+    cfg = CFG.with_params({"rules.pass_time_fraction": 0.25})
+    event = detect_events(_pass_clip(), cfg).events[0]
+    assert event.t_sec == pytest.approx(1.08)
+    assert (event.x_m, event.y_m) == (10.5, 10.0)  # still located at the release point
+
+
+def test_pass_time_fraction_does_not_move_ball_losses():
+    ball = {**hold(range(0, 13), (10.5, 10)), **hold(range(18, 31), (24.5, 10))}
+    players = {1: ("home", ALL, (10, 10)), 5: ("away", ALL, (25, 10))}
+    cfg = CFG.with_params({"rules.pass_time_fraction": 0.5})
+    det = detect_events(make_clip(31, players, ball), cfg)
+    assert _summary(det) == [("pass", "home", 1.2), ("ball_loss", "home", round(18 * DT, 2))]
