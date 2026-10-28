@@ -4,15 +4,13 @@ The only writer of evals/golden/. Clips of golden set ``<set_id>`` are read from
 data/raw/<set_id>/*.mp4; each tag is saved immediately to evals/golden/<set_id>.json.
 """
 
-import os
 import re
-import shutil
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
+from video_component import RAW_DIR, video_events, video_url
 
 from match_tagger.config import load_config
 from match_tagger.evals.golden import (
@@ -27,26 +25,13 @@ from match_tagger.evals.tagging import TagAction, apply_action
 from match_tagger.events.schema import EVENT_TYPES
 from match_tagger.video.frames import read_meta
 
-RAW_DIR = Path("data/raw")
-COMPONENT_DIR = Path(__file__).parent / "tagger_component"
-TYPE_LABELS = {"pass": "Passz", "ball_loss": "Labdavesztés", "shot": "Lövés",
-               "set_piece": "Pontrúgás"}  # fmt: skip
+TYPE_LABELS = {
+    "pass": "Passz",
+    "ball_loss": "Labdavesztés",
+    "shot": "Lövés",
+    "set_piece": "Pontrúgás",
+}
 SET_ID_PATTERN = re.compile(r"^[a-z0-9_-]+$")
-
-video_tagger = components.declare_component("video_tagger", path=str(COMPONENT_DIR))
-
-
-def serve_clip(video: Path, set_id: str) -> str:
-    """Make the clip reachable from the component (hardlink, else copy); return its URL."""
-    target = COMPONENT_DIR / "clips" / set_id / video.name
-    if not target.exists() or target.stat().st_size != video.stat().st_size:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.unlink(missing_ok=True)
-        try:
-            os.link(video, target)
-        except OSError:
-            shutil.copyfile(video, target)
-    return f"clips/{set_id}/{video.name}"
 
 
 def choose_set(golden_dir: Path) -> GoldenSet | None:
@@ -105,8 +90,12 @@ def get_clip(golden: GoldenSet, video: Path) -> GoldenClip:
     clip = golden.clip(video.stem)
     if clip is None:
         meta = read_meta(video)
-        clip = GoldenClip(clip_id=video.stem, video=video.as_posix(), fps=meta.fps,
-                          duration_sec=meta.n_frames / meta.fps)  # fmt: skip
+        clip = GoldenClip(
+            clip_id=video.stem,
+            video=video.as_posix(),
+            fps=meta.fps,
+            duration_sec=meta.n_frames / meta.fps,
+        )
         golden.clips.append(clip)
     return clip
 
@@ -126,11 +115,13 @@ def edit_metadata(clip: GoldenClip) -> GoldenClip:
         "Vendég mez", clip.kits.get("away", ""), key=f"away-{clip.clip_id}"
     )
     tagged_by = st.sidebar.text_input("Tagelő", clip.tagged_by or "", key=f"by-{clip.clip_id}")
-    complete = st.sidebar.checkbox("Klip kész (bekerül az értékelésbe)", clip.complete,
-                                   key=f"done-{clip.clip_id}")  # fmt: skip
+    complete = st.sidebar.checkbox(
+        "Klip kész (bekerül az értékelésbe)", clip.complete, key=f"done-{clip.clip_id}"
+    )
     kits = {k: v.strip() for k, v in (("home", home), ("away", away)) if v.strip()}
-    return clip.model_copy(update={"kits": kits, "tagged_by": tagged_by.strip() or None,
-                                   "complete": complete})  # fmt: skip
+    return clip.model_copy(
+        update={"kits": kits, "tagged_by": tagged_by.strip() or None, "complete": complete}
+    )
 
 
 def handle_action(golden: GoldenSet, clip: GoldenClip, value: dict, golden_dir: Path) -> None:
@@ -141,8 +132,12 @@ def handle_action(golden: GoldenSet, clip: GoldenClip, value: dict, golden_dir: 
     seen.add(value["nonce"])
     history_key = f"history-{golden.set_id}-{clip.clip_id}"
     history = st.session_state.get(history_key, [])
-    clip, history = apply_action(clip, TagAction.model_validate(value), history,
-                                 lambda: f"{clip.clip_id}-{uuid.uuid4().hex[:8]}")  # fmt: skip
+    clip, history = apply_action(
+        clip,
+        TagAction.model_validate(value),
+        history,
+        lambda: f"{clip.clip_id}-{uuid.uuid4().hex[:8]}",
+    )
     st.session_state[history_key] = history
     store(golden, clip, golden_dir)
     st.rerun()
@@ -151,11 +146,13 @@ def handle_action(golden: GoldenSet, clip: GoldenClip, value: dict, golden_dir: 
 def summary(clip: GoldenClip) -> None:
     """Counts per event type and team below the player."""
     rows = [
-        {"Esemény": TYPE_LABELS[t],
-         "Hazai": sum(e.type == t and e.team == "home" for e in clip.events),
-         "Vendég": sum(e.type == t and e.team == "away" for e in clip.events)}
+        {
+            "Esemény": TYPE_LABELS[t],
+            "Hazai": sum(e.type == t and e.team == "home" for e in clip.events),
+            "Vendég": sum(e.type == t and e.team == "away" for e in clip.events),
+        }
         for t in EVENT_TYPES
-    ]  # fmt: skip
+    ]
     st.dataframe(rows, hide_index=True)
 
 
@@ -173,11 +170,15 @@ def main() -> None:
     if edited.model_dump(exclude={"updated_at"}) != clip.model_dump(exclude={"updated_at"}):
         store(golden, edited, golden_dir)
         st.rerun()  # refresh the sidebar status table
-    value = video_tagger(
-        video_url=serve_clip(video, golden.set_id), fps=clip.fps, kits=clip.kits,
+    value = video_events(
+        mode="tag",
+        video_url=video_url(video),
+        fps=clip.fps,
+        kits=clip.kits,
+        types=list(EVENT_TYPES),
         events=[e.model_dump(include={"id", "t_sec", "type", "team"}) for e in clip.events],
-        key=f"tagger-{golden.set_id}-{clip.clip_id}", default=None,
-    )  # fmt: skip
+        key=f"tagger-{golden.set_id}-{clip.clip_id}",
+    )
     handle_action(golden, clip, value, golden_dir)
     st.caption(f"Mentés: {golden_dir / (golden.set_id + '.json')} · {len(clip.events)} esemény")
     summary(clip)
