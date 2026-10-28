@@ -19,7 +19,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from match_tagger.events.schema import Event, Outcome, Team
-from match_tagger.metrics.context import MatchContext
+from match_tagger.metrics.context import MatchContext, hungarian_teams
 from match_tagger.pitch.geometry import PitchDims
 
 SB_LENGTH, SB_WIDTH = 120.0, 80.0
@@ -137,17 +137,24 @@ def convert(events: list[Raw], match: Raw, dims: PitchDims = DEFAULT_DIMS) -> li
     return sorted(out, key=lambda ev: (ev.t_sec, ev.id))
 
 
-def context(events: list[Raw], match: Raw, dims: PitchDims = DEFAULT_DIMS) -> MatchContext:
+def context(
+    events: list[Raw],
+    match: Raw,
+    names_hu: dict[str, str] | None = None,
+    dims: PitchDims = DEFAULT_DIMS,
+) -> MatchContext:
     """Match context of a StatsBomb match (no video; home attacks right in our frame)."""
     play = [e for e in events if e["period"] <= 4]
+    teams: dict[Team, str] = {
+        "home": match["home_team"]["home_team_name"],
+        "away": match["away_team"]["away_team_name"],
+    }
     return MatchContext(
         match_id=f"sb_{match['match_id']}",
         source="statsbomb",
         duration_sec=max(t_sec(e) for e in play),
-        teams={
-            "home": match["home_team"]["home_team_name"],
-            "away": match["away_team"]["away_team_name"],
-        },
+        teams=teams,
+        teams_hu=hungarian_teams(teams, names_hu or {}),
         has_video=False,
         dims=dims,
         home_attacks="right",

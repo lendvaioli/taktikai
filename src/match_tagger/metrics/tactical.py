@@ -31,7 +31,10 @@ class ZoneCount(BaseModel):
 
 
 class BallLosses(BaseModel):
-    """Ball losses of a team per zone (shares of the located ones)."""
+    """Ball losses of a team per zone (shares of the located ones).
+
+    In the attack frame also summed per third and per lane, so nobody has to add zones by hand.
+    """
 
     available: Literal[True] = True
     team: Team
@@ -39,6 +42,8 @@ class BallLosses(BaseModel):
     total: int
     located: int
     zones: dict[str, ZoneCount]
+    thirds: dict[str, ZoneCount] = {}
+    lanes: dict[str, ZoneCount] = {}
 
 
 class Node(BaseModel):
@@ -114,15 +119,23 @@ def ball_losses_by_zone(events: Sequence[Event], ctx: MatchContext, team: Team) 
     losses = _of(events, team, "ball_loss")
     zones = Counter(z for z in (event_zone(e, ctx) for e in losses) if z is not None)
     located = sum(zones.values())
+
+    def counts(counter: Counter) -> dict[str, ZoneCount]:
+        return {
+            k: ZoneCount(count=c, share=round(c / located, 3))
+            for k, c in sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))
+        }
+
+    frame = zone_frame(ctx)
+    split = [k.split("_") for k in zones.elements()] if frame == "attack" else []
     return BallLosses(
         team=team,
-        frame=zone_frame(ctx),
+        frame=frame,
         total=len(losses),
         located=located,
-        zones={
-            k: ZoneCount(count=c, share=round(c / located, 3))
-            for k, c in sorted(zones.items(), key=lambda kv: (-kv[1], kv[0]))
-        },
+        zones=counts(zones),
+        thirds=counts(Counter(third for third, _ in split)),
+        lanes=counts(Counter(lane for _, lane in split)),
     )
 
 

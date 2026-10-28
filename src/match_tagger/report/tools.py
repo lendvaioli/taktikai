@@ -11,11 +11,58 @@ from pydantic import BaseModel, ValidationError
 
 from match_tagger.clips.stage import ClipsIndex
 from match_tagger.events.schema import EVENT_TYPES, Event, EventType, Team
+from match_tagger.metrics.context import team_labels_hu
 from match_tagger.metrics.frame import event_zone
 from match_tagger.metrics.stage import METRIC_NAMES, MatchMetrics
 from match_tagger.report.schema import Report, ToolCall, ToolSpec
 
 TEAM_SCHEMA = {"type": "string", "enum": ["home", "away"]}
+RELIABILITY_HU = {"very_low": "nagyon alacsony", "low": "alacsony", "ok": "megfelelő"}
+THIRD_LANE_LABELS_HU = {
+    "own": "saját harmad",
+    "middle": "középső harmad",
+    "final": "támadóharmad",
+    "right": "jobb sáv",
+    "centre": "középső sáv",
+    "left": "bal sáv",
+}
+FIELD_LABELS_HU = {
+    "passes": "passzok",
+    "passes_complete": "sikeres passzok",
+    "pass_completion_share": "passzpontosság (arány)",
+    "complete": "sikeres passzok",
+    "completion_share": "passzpontosság (arány)",
+    "ball_losses": "labdavesztések",
+    "total": "összesen",
+    "located": "helyhez kötött",
+    "count": "darab",
+    "share": "arány",
+    "thirds": "harmadonként",
+    "lanes": "sávonként",
+    "value": "letámadási mutató (PPDA-proxy)",
+    "opponent_passes": "ellenfél passzai a saját területén",
+    "opponent_ball_losses": "ellenfél labdavesztései a saját területén",
+    "shots": "lövések",
+    "goals": "gólok",
+    "xg_total": "várható gólok (xG) összesen",
+    "duration_sec": "időtartam (másodperc)",
+    "duration_min": "időtartam (perc)",
+    "n_events": "események száma",
+    "events_per_type": "események típusonként",
+}
+
+
+def normalize_arguments(tool: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """Arguments in canonical form (defaults filled), or None if they are invalid."""
+    models: dict[str, type[BaseModel]] = {
+        "get_metric": MetricArgs,
+        "get_events": EventArgs,
+        "get_clips": ClipArgs,
+    }
+    try:
+        return models[tool].model_validate(args).model_dump()
+    except (KeyError, ValidationError):
+        return None
 
 
 class MetricArgs(BaseModel):
@@ -119,8 +166,13 @@ class ToolBox:
         """Bind the match data; nothing is read from disk afterwards."""
         self.metrics, self.events, self.max_events = metrics, list(events), max_events
         self.clips = {c.event_id: c for c in clips.clips} if clips else {}
-        self.outputs: list[Any] = []
+        self.calls: list[tuple[ToolCall, dict[str, Any]]] = []
         self.returned_clips: set[str] = set()
+
+    @property
+    def outputs(self) -> list[dict[str, Any]]:
+        """Every tool result of the run, in call order."""
+        return [result for _, result in self.calls]
 
     def run(self, call: ToolCall) -> dict[str, Any]:
         """Run one call; invalid arguments or unknown tools give an error result."""
@@ -135,24 +187,26 @@ class ToolBox:
             result = handlers[call.name](call.arguments)
         except (ValidationError, ValueError) as exc:
             result = {"error": str(exc).splitlines()[0]}
-        self.outputs.append(result)
+        self.calls.append((call, result))
         return result
 
     def get_metric(self, args: dict[str, Any]) -> dict[str, Any]:
-        """A slice of metrics.json."""
+        """A slice of metrics.json with Hungarian labels for its fields."""
         a = MetricArgs.model_validate(args)
         m = self.metrics
         if a.name == "summary":
             return {
-                "team_name": m.context.teams[a.team],
+                "team_name_hu": team_labels_hu(m.context)[a.team],
                 "summary": m.summary[a.team].model_dump(),
                 "sample": m.sample.model_dump(),
+                "reliability_hu": RELIABILITY_HU[m.sample.reliability],
                 "has_video": m.context.has_video,
+                "labels_hu": FIELD_LABELS_HU,
             }
         out = getattr(m, a.name)[a.team].model_dump()
         if a.name in ("ball_losses_by_zone", "pass_network") and m.zone_labels_hu:
-            out["zone_labels_hu"] = m.zone_labels_hu
-        return out
+            out["zone_labels_hu"] = m.zone_labels_hu | THIRD_LANE_LABELS_HU
+        return out | {"labels_hu": FIELD_LABELS_HU}
 
     def _row(self, e: Event) -> dict[str, Any]:
         ctx = self.metrics.context

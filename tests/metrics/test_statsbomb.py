@@ -101,4 +101,6 @@ def test_context():
     )
     assert ctx.duration_sec == pytest.approx(3000.0)  # the shoot-out is left out
     assert ctx.teams == {"home": "H", "away": "A"}
+    assert ctx.teams_hu == {"home": "Hazai csapat", "away": "Vendég csapat"}  # not mapped
+    assert context(RAW, MATCH, {"H": "Hálóország"}).teams_hu["home"] == "Hálóország"
     assert "StatsBomb" in ctx.attribution

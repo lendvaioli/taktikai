@@ -96,12 +96,16 @@ def reply(*calls: tuple[str, dict], text: str = "") -> LLMReply:
     )
 
 
+SUMMARY_HOME = {"name": "summary", "team": "home"}
+
+
 def report_args(loss_count: float = 3, clip: str = "m-e3", note_minutes: str = "10") -> dict:
-    """A report whose numbers all come from get_metric summary / ball_losses_by_zone."""
+    """A report whose numbers all come from get_metric summary (home): 3 ball losses."""
+    source = {"tool": "get_metric", "arguments": SUMMARY_HOME, "path": "summary.ball_losses"}
     finding = {
         "title": "Labdavesztések a támadóharmadban",
         "claim": f"A hazai csapat {loss_count:g} labdát veszített, főleg a jobb sávban.",
-        "numbers": [{"label": "labdavesztés", "value": loss_count}],
+        "numbers": [{"label": "labdavesztés", "value": loss_count, "source": source}],
         "clip_ids": [clip],
         "training": "Kis létszámú játék szűk területen, gyors döntésekkel.",
     }

@@ -7,6 +7,16 @@ retries: 1                            # a rejected report gets one corrected res
 number_tolerance: 0.5                 # a written number may differ from a tool value by half a
                                       # unit of its last digit (rounding); shares also as percent
 max_events: 30                        # get_events returns at most this many events
+semantics:                            # rule-based checks of the report text (report/semantics.py)
+  greater_stems: [több, nagyobb, magasabb]      # "first number > second number"
+  less_stems: [kevesebb, kisebb, alacsonyabb]   # "first number < second number"
+  not_comparative: [többi, többség]   # words starting with a stem that are not comparisons
+  negation: nem                       # "nem több" flips the direction
+  swap_word: képest                   # "a 54-hez képest 51 kevesebb": the subject comes second
+  clause_breaks: [de, bár, viszont, azonban, míg, ugyanakkor]  # ", bár ..." starts a new clause
+  english_words: [the, and, of, with, pass, passes, ball, loss, losses, team, home, away, zone,
+                  third, final, pressing, shot, shots, rate, completion, share, total, very, low,
+                  high, left, right, centre, center, sample]   # never: a, is, ok, per, bal, el, be
 ollama:
   host: http://127.0.0.1:11434        # local server only
   model: hf.co/Qwen/Qwen3-8B-GGUF:Q4_K_M   # Apache-2.0, pulled from the Hugging Face Hub

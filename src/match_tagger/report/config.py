@@ -27,6 +27,20 @@ class AnthropicConfig(BaseModel):
     server_fallback: bool = False  # refusal fallback; not offered for Haiku 5.5
 
 
+class SemanticsConfig(BaseModel):
+    """Word lists of the rule-based semantic checks (lower case)."""
+
+    greater_stems: list[str] = Field(default_factory=lambda: ["több", "nagyobb", "magasabb"])
+    less_stems: list[str] = Field(default_factory=lambda: ["kevesebb", "kisebb", "alacsonyabb"])
+    not_comparative: list[str] = Field(default_factory=lambda: ["többi", "többség"])
+    negation: str = "nem"
+    swap_word: str = "képest"
+    clause_breaks: list[str] = Field(
+        default_factory=lambda: ["de", "bár", "viszont", "azonban", "míg", "ugyanakkor"]
+    )
+    english_words: list[str] = Field(default_factory=list)
+
+
 class ReportConfig(BaseModel):
     """Contents of configs/report.yaml."""
 
@@ -37,5 +51,6 @@ class ReportConfig(BaseModel):
     retries: int = Field(1, ge=0)
     number_tolerance: float = Field(0.5, ge=0)
     max_events: int = Field(30, ge=1)
+    semantics: SemanticsConfig = SemanticsConfig()
     ollama: OllamaConfig = OllamaConfig()
     anthropic: AnthropicConfig = AnthropicConfig()

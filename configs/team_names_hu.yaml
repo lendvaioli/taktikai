@@ -1,0 +1,16 @@
+# Hungarian names of reference-data teams (StatsBomb names as keys), used in reports. Teams not
+# listed here are called "Hazai csapat" / "Vendég csapat". Own footage uses the labels from
+# configs/matches.yaml and needs no entry.
+names:
+  France: Franciaország
+  Croatia: Horvátország
+  Belgium: Belgium
+  England: Anglia
+  Germany: Németország
+  Spain: Spanyolország
+  Portugal: Portugália
+  Argentina: Argentína
+  Brazil: Brazília
+  Netherlands: Hollandia
+  Italy: Olaszország
+  Hungary: Magyarország

@@ -68,8 +68,11 @@ def test_ball_losses_by_attack_zone():
         "final_right": (1, 0.5),
         "own_left": (1, 0.5),
     }
+    assert {k: z.count for k, z in result.thirds.items()} == {"final": 1, "own": 1}
+    assert {k: z.count for k, z in result.lanes.items()} == {"left": 1, "right": 1}
     away = ball_losses_by_zone(EVENTS, _ctx(), "away")
     assert list(away.zones) == ["own_centre"]
+    assert ball_losses_by_zone(EVENTS, _ctx(None), "home").thirds == {}
 
 
 def test_ball_losses_by_absolute_zone_without_direction():

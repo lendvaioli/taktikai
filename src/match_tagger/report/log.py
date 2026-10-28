@@ -42,6 +42,7 @@ class RunLog:
         reply: LLMReply,
         tools: list[ToolRecord],
         validation: list[str] | None,
+        unchecked_comparisons: int = 0,
     ) -> None:
         """Log one LLM call with its tool calls and, for a submission, the validator's verdict."""
         self.input_tokens += reply.input_tokens or 0
@@ -59,6 +60,7 @@ class RunLog:
                 "tool_calls": [t.model_dump() for t in tools],
                 "submitted": validation is not None,
                 "validation_errors": validation,
+                "unchecked_comparisons": unchecked_comparisons,
             }
         )
 

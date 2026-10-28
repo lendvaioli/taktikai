@@ -1,7 +1,8 @@
 """The report agent: a plain loop of at most ``max_steps`` LLM calls, no agent framework.
 
 Each step is one model call. Data tool calls are executed and their results appended; a
-``submit_report`` call is parsed and validated (schema, numbers, clip ids). A rejected
+``submit_report`` call is parsed and validated (schema, numbers and their sources, comparisons,
+language, clip ids; see ``validate``). A rejected
 report gets one retry with the validator's errors; the last step offers only
 ``submit_report``. The loop never returns an unvalidated report.
 """
@@ -10,13 +11,14 @@ import json
 import time
 from typing import Any, Literal
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from match_tagger.report.backends import LLMBackend
+from match_tagger.report.config import SemanticsConfig
 from match_tagger.report.log import RunLog, ToolRecord
 from match_tagger.report.schema import Message, Report, ToolCall
-from match_tagger.report.tools import SUBMIT_SPEC, ToolBox, tool_specs
-from match_tagger.report.validate import validate_report
+from match_tagger.report.tools import SUBMIT_SPEC, ToolBox, normalize_arguments, tool_specs
+from match_tagger.report.validate import Validation, ValidationInput, validate_report
 
 Status = Literal["ok", "rejected", "max_steps"]
 NUDGE = "Use a tool, or call submit_report with the final report."
@@ -30,6 +32,8 @@ class AgentSettings(BaseModel):
     max_steps: int = 8
     retries: int = 1
     tolerance: float = 0.5
+    semantics: SemanticsConfig = Field(default_factory=SemanticsConfig)
+    foreign_names: list[str] = Field(default_factory=list)
 
 
 class AgentResult(BaseModel):
@@ -76,13 +80,21 @@ def _run_tools(calls: list[ToolCall], box: ToolBox, messages: list[Message]) -> 
     return records
 
 
-def _check(call: ToolCall, box: ToolBox, s: AgentSettings) -> tuple[Report | None, list[str]]:
+def _check(call: ToolCall, box: ToolBox, s: AgentSettings) -> tuple[Report | None, Validation]:
     report, errors = parse_submission(call)
     if report is None:
-        return None, errors
-    return report, validate_report(
-        report, box.outputs, box.returned_clips, s.has_video, s.match_id, s.tolerance
+        return None, Validation(errors=errors)
+    check = ValidationInput(
+        calls=box.calls,
+        returned_clips=box.returned_clips,
+        has_video=s.has_video,
+        match_id=s.match_id,
+        normalize=normalize_arguments,
+        tolerance=s.tolerance,
+        semantics=s.semantics,
+        foreign_names=s.foreign_names,
     )
+    return report, validate_report(report, check)
 
 
 def feedback(errors: list[str], has_video: bool) -> str:
@@ -98,7 +110,11 @@ def feedback(errors: list[str], has_video: bool) -> str:
         + "\nRules for the whole report:\n"
         "- 2 or 3 findings, each with title, claim, numbers, clip_ids and training\n"
         f"- {clips}\n"
-        "- every number is copied from a tool result; leave out numbers no tool returned"
+        "- every number is copied from a tool result; leave out numbers no tool returned\n"
+        "- every entry of numbers has a source: the tool, its exact arguments and the path of the "
+        "field; value equals that field exactly\n"
+        "- Hungarian only: Hungarian labels instead of metric keys, team_name_hu for teams; "
+        "comparisons (több, kevesebb, magasabb, alacsonyabb) must match the numbers"
     )
 
 
@@ -123,8 +139,9 @@ def run_agent(
             if not reply.tool_calls:
                 messages.append(Message(role="user", content=NUDGE))
             continue
-        report, errors = _check(submit, box, s)
-        log.step(step, reply, records, errors)
+        report, validation = _check(submit, box, s)
+        errors = validation.errors
+        log.step(step, reply, records, errors, validation.unchecked_comparisons)
         if not errors:
             log.end("ok", step, [])
             return AgentResult(status="ok", report=report, errors=[], steps=step)

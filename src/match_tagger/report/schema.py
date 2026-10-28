@@ -5,12 +5,30 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
+class NumberSource(BaseModel):
+    """Where a supporting number comes from: one tool call of the run and a field path in it.
+
+    ``path`` is dot-separated; list items are addressed by index, e.g.
+    ``thirds.middle.count`` or ``events.0.t_sec``.
+    """
+
+    tool: Literal["get_metric", "get_events", "get_clips"]
+    arguments: dict[str, Any]
+    path: str = Field(min_length=1)
+
+    def describe(self) -> str:
+        """Readable form, e.g. get_metric(name=ppda, team=home) -> value."""
+        args = ", ".join(f"{k}={v}" for k, v in self.arguments.items())
+        return f"{self.tool}({args}) -> {self.path}"
+
+
 class SupportingNumber(BaseModel):
-    """A value behind a finding, copied from a tool result."""
+    """A value behind a finding, copied exactly from the tool result field named in ``source``."""
 
     label: str = Field(min_length=1)
     value: float
     unit: str | None = None
+    source: NumberSource
 
 
 class Finding(BaseModel):

@@ -24,6 +24,12 @@ class PressingConfig(BaseModel):
     zone_max_x_share: float = Field(0.6, gt=0, le=1)
 
 
+class TeamNamesConfig(BaseModel):
+    """Contents of configs/team_names_hu.yaml: reference-data team name -> Hungarian name."""
+
+    names: dict[str, str] = Field(default_factory=dict)
+
+
 class MetricsConfig(BaseModel):
     """Contents of configs/metrics.yaml."""
 
