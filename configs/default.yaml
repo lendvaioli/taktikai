@@ -2,6 +2,7 @@
 # together with the stage implementation. Stage-specific files live next to this one.
 
 paths:
+  raw_dir: data/raw                 # source videos and downloaded reference data, never committed
   processed_dir: data/processed
   models_dir: models                # downloaded weights, never committed
 

@@ -12,7 +12,7 @@ SCRIPT = textwrap.dedent(
     import sys
     from match_tagger.cli import main
 
-    assert main(["run", "--stage", "metrics", "--video", sys.argv[1]]) == 2
+    assert main(["run", "--stage", "unknown", "--video", sys.argv[1]]) == 2
     from match_tagger.pitch.geometry import PitchDims
     from match_tagger.pitch.minimap import pitch_canvas
 

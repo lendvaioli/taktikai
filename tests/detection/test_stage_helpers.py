@@ -82,4 +82,4 @@ def test_repo_configs_parse():
 def test_cli_rejects_unimplemented_stage(tmp_path):
     video = tmp_path / "x.mp4"
     video.write_bytes(b"")
-    assert main(["run", "--stage", "metrics", "--video", str(video)]) == 2
+    assert main(["run", "--stage", "unknown", "--video", str(video)]) == 2

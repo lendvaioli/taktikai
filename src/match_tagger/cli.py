@@ -7,7 +7,8 @@ from pathlib import Path
 
 from match_tagger.config import CONFIG_DIR
 
-IMPLEMENTED_STAGES = ("detection", "pitch", "events", "clips")
+VIDEO_STAGES = ("detection", "pitch", "events", "clips")
+IMPLEMENTED_STAGES = (*VIDEO_STAGES, "metrics", "report")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -16,7 +17,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="Run one pipeline stage.")
     run.add_argument("--stage", required=True)
-    run.add_argument("--video", required=True, type=Path)
+    run.add_argument("--video", type=Path, help="Required by the stages that read the video.")
     run.add_argument("--match", help="Match id; defaults to the video file name without suffix.")
     run.add_argument("--start", type=float, help="Override video.start_sec.")
     run.add_argument("--duration", type=float, help="Override video.duration_sec.")
@@ -29,7 +30,10 @@ def run_stage(args: argparse.Namespace) -> int:
     if args.stage not in IMPLEMENTED_STAGES:
         print(f"Stage {args.stage!r} is not implemented yet.", file=sys.stderr)
         return 2
-    if not args.video.exists():
+    if args.video is None and (args.stage in VIDEO_STAGES or not args.match):
+        print(f"Stage {args.stage!r} needs --video (metrics/report: or --match).", file=sys.stderr)
+        return 2
+    if args.video is not None and not args.video.exists():
         print(f"Video not found: {args.video}", file=sys.stderr)
         return 1
     if args.stage == "detection":
@@ -41,9 +45,15 @@ def run_stage(args: argparse.Namespace) -> int:
     elif args.stage == "events":
         from match_tagger.events.stage import EventsStageConfig as Config
         from match_tagger.events.stage import run_events as run
-    else:
+    elif args.stage == "clips":
         from match_tagger.clips.stage import ClipsStageConfig as Config
         from match_tagger.clips.stage import run_clips as run
+    elif args.stage == "metrics":
+        from match_tagger.metrics.stage import MetricsStageConfig as Config
+        from match_tagger.metrics.stage import run_metrics as run
+    else:
+        from match_tagger.report.stage import ReportStageConfig as Config
+        from match_tagger.report.stage import run_report as run
 
     cfg = Config.load(args.config_dir)
     if hasattr(cfg, "video"):  # stages that sample frames accept a time window

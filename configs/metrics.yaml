@@ -1,0 +1,10 @@
+# Metrics stage: events (+ review corrections) -> metrics.json. Definitions: README "Metrics".
+reliability:                 # sample-size label shown to the report agent (and the reader)
+  very_low_max_min: 10.0     # under 10 minutes of footage ...
+  very_low_max_events: 30    # ... or under 30 events -> very_low
+  low_max_min: 45.0          # under 45 minutes -> low; otherwise ok
+pass_network:
+  min_edge_count: 1          # edges with fewer passes are left out
+  max_edges: 10              # strongest edges reported per team
+pressing:
+  zone_max_x_share: 0.6      # PPDA area: the opponent's own 60 % of the pitch (its attack frame)

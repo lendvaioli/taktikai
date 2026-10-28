@@ -24,6 +24,7 @@ def load_config(name: str, model: type[ModelT], config_dir: Path = CONFIG_DIR) -
 class PathsConfig(BaseModel):
     """Project-wide directories, read from the ``paths`` section of default.yaml."""
 
+    raw_dir: Path = Path("data/raw")
     processed_dir: Path = Path("data/processed")
     models_dir: Path = Path("models")
 
