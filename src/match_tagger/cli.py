@@ -1,6 +1,7 @@
 """Command-line entry point: ``python -m match_tagger.cli run --stage <stage> --video <path>``."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -51,8 +52,20 @@ def run_stage(args: argparse.Namespace) -> int:
     return 0
 
 
+def use_headless_matplotlib() -> None:
+    """Force matplotlib's non-interactive Agg backend for this process.
+
+    Jupyter kernels (Kaggle, Colab) export MPLBACKEND=module://matplotlib_inline.backend_inline,
+    which subprocesses inherit; that backend is not installed in the project environment, so
+    ``import matplotlib`` itself fails. The pipeline never shows plots, so Agg is always right.
+    Must run before any stage module (ultralytics, mplsoccer) imports matplotlib.
+    """
+    os.environ["MPLBACKEND"] = "Agg"
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point."""
+    use_headless_matplotlib()
     args = parse_args(argv)
     return run_stage(args)
 
