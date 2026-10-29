@@ -66,9 +66,8 @@ Events v1 on the `dfl` golden set (five 30 s broadcast clips; aggregates over th
 |---|---|---|---|---|---|
 | dfl (5 clips) | pass | 43 | 0.889 | 0.744 | 0.810 |
 | dfl (5 clips) | ball loss | 4 | 0.167 | 1.000 | 0.286 |
-| dfl (5 clips) | shot | 1 | – | 0.000 | 0.000 |
 
-Run of 2026-10-28 at commit `98e8de2-dirty`, matching tolerance 2 s. Thresholds were tuned leave-one-clip-out; for passes the held-out estimate equals this result (docs/EXPERIMENTS.md).
+Run of 2026-10-29 at commit `bbc9481`, matching tolerance 2 s. Thresholds were tuned leave-one-clip-out; for passes the held-out estimate equals this result (docs/EXPERIMENTS.md).
 <!-- results:events:end -->
 
 Report agent, local Qwen3-8B, one run per match on three matches per prompt version
@@ -115,19 +114,16 @@ make run STAGE=detection VIDEO=data/raw/my_clip.mp4   # own footage: detection, 
 <!-- models:start -->
 | model / dataset | licence | used in |
 |---|---|---|
-| football-player-detection.pt (YOLOv8, classes ball / goalkeeper / player / referee) | **Non-commercial use only, licence review pending.** See caveats below. | detection |
-| football-players-detection (Roboflow Universe dataset the detector was trained on) | CC BY 4.0 according to search results; | detection (indirectly, via the weights) |
+| football-player-detection.pt (YOLOv8, classes ball / goalkeeper / player / referee) | **Non-commercial use only, licence review pending.** | detection |
+| football-players-detection (Roboflow Universe dataset the detector was trained on) | CC BY 4.0 according to search results; project page not verified (HTTP 403). | detection (indirectly, via the weights) |
 | DFL - Bundesliga Data Shootout (source footage of the dataset above) | Unclear: competition rules could not be read. | detection (indirectly) |
 | DFL sample clips (5 x 30 s, 1080p, 25 fps), stored in `data/raw/` | Unclear, same as the DFL competition data. | detection, pitch (test input); golden set `dfl` (private) |
 | google/siglip-base-patch16-224 | Apache-2.0 | tracking (team assignment) |
-| football-pitch-detection.pt (YOLOv8-pose, 32 pitch keypoints) | **Non-commercial use only, licence review pending.** Same caveats as the detector weights, see below. | pitch |
-| football-field-detection (Roboflow Universe dataset the keypoint model was trained on) | CC BY 4.0 according to search results; | pitch (indirectly, via the weights) |
+| football-pitch-detection.pt (YOLOv8-pose, 32 pitch keypoints) | **Non-commercial use only, licence review pending.** | pitch |
+| football-field-detection (Roboflow Universe dataset the keypoint model was trained on) | CC BY 4.0 according to search results; project page not opened. | pitch (indirectly, via the weights) |
 | Qwen/Qwen3-8B-GGUF, quantisation Q4_K_M (5.03 GB), run by Ollama as `hf.co/Qwen/Qwen3-8B-GGUF:Q4_K_M` | Apache-2.0 (model card, checked 2026-10-28) | report (default LLM backend, local) |
 | StatsBomb Open Data, FIFA World Cup 2018 final (competition 43, season 3, match 8658), stored in `data/raw/statsbomb/` | **Not an open licence:** StatsBomb Public Data User Agreement (LICENSE.pdf, last updated 8 September 2023). | metrics (reference data), report (demo on a full match) |
 | Claude (Anthropic API), model `claude-haiku-5-5` (low-cost; changed from `claude-opus-5-5` on 2026-10-28) | Proprietary API, paid per token | report (optional backend, `TAKTIKAI_LLM_BACKEND=anthropic`; not run so far) |
-| asset | terms | used in |
-| --- | --- | --- |
-| `space/assets/hudl-statsbomb-logo-black.png`, `hudl-statsbomb-logo-white.png` | Required by clause 1.4 of the User Agreement for any published analysis; | Space header, footer and charts |
 <!-- models:end -->
 
 Full record with sources and caveats: [docs/MODELS.md](docs/MODELS.md). In short: the code is
