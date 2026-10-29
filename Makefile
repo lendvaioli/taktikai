@@ -55,3 +55,6 @@ space:
 space-serve:
 	@echo "Demo: http://127.0.0.1:8000  (Ctrl+C to stop)"
 	cd space && python -m http.server 8000 --bind 127.0.0.1
+
+readme:
+	uv run python scripts/readme_tables.py

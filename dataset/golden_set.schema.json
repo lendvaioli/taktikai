@@ -1,0 +1,293 @@
+{
+  "$defs": {
+    "Event": {
+      "description": "One match event at a single instant, relative to the start of its clip (or match).\n\n``team`` is the acting team: the passer's, the shooter's, the team taking the set piece, or\nthe team that lost the ball. Golden events leave ``confidence`` empty. The optional fields\nafter ``confidence`` are filled where the source knows them: the pipeline sets a pass's end\npoint and outcome; the StatsBomb adapter also sets players, xG and period.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "t_sec": {
+          "minimum": 0,
+          "title": "T Sec",
+          "type": "number"
+        },
+        "type": {
+          "enum": [
+            "pass",
+            "ball_loss",
+            "shot",
+            "set_piece"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "team": {
+          "enum": [
+            "home",
+            "away"
+          ],
+          "title": "Team",
+          "type": "string"
+        },
+        "x_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X M"
+        },
+        "y_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y M"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "end_x_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End X M"
+        },
+        "end_y_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Y M"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "enum": [
+                "complete",
+                "incomplete",
+                "goal",
+                "saved",
+                "blocked",
+                "off_target"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
+        },
+        "player": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Player"
+        },
+        "recipient": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipient"
+        },
+        "xg": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Xg"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        }
+      },
+      "required": [
+        "id",
+        "t_sec",
+        "type",
+        "team"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "GoldenClip": {
+      "description": "One tagged clip. Event times are relative to the clip start.",
+      "properties": {
+        "clip_id": {
+          "minLength": 1,
+          "title": "Clip Id",
+          "type": "string"
+        },
+        "video": {
+          "description": "Repo-relative path of the clip, e.g. data/raw/dfl/x.mp4.",
+          "title": "Video",
+          "type": "string"
+        },
+        "fps": {
+          "exclusiveMinimum": 0,
+          "title": "Fps",
+          "type": "number"
+        },
+        "duration_sec": {
+          "exclusiveMinimum": 0,
+          "title": "Duration Sec",
+          "type": "number"
+        },
+        "kits": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Kit description per team.",
+          "propertyNames": {
+            "enum": [
+              "home",
+              "away"
+            ]
+          },
+          "title": "Kits",
+          "type": "object"
+        },
+        "complete": {
+          "default": false,
+          "description": "Only complete clips are evaluated.",
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "tagged_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tagged By"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "clip_id",
+        "video",
+        "fps",
+        "duration_sec"
+      ],
+      "title": "GoldenClip",
+      "type": "object"
+    }
+  },
+  "description": "All golden clips from one source (e.g. the DFL sample clips).",
+  "properties": {
+    "set_id": {
+      "minLength": 1,
+      "title": "Set Id",
+      "type": "string"
+    },
+    "source": {
+      "default": "",
+      "title": "Source",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "clips": {
+      "items": {
+        "$ref": "#/$defs/GoldenClip"
+      },
+      "title": "Clips",
+      "type": "array"
+    }
+  },
+  "required": [
+    "set_id"
+  ],
+  "title": "GoldenSet",
+  "type": "object"
+}
