@@ -3,6 +3,8 @@ name = "match-tagger"
 version = "0.1.0"
 description = "AI pipeline that turns a football club's match footage into tagged events, clips and a coaching report."
 readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "numpy>=1.26",

@@ -126,3 +126,17 @@ Planned work that is out of scope for the task that found it. Each item is a sep
 - **Done when:** track ids on the development clip (first 30 s) are at least as stable as with
   `sv.ByteTrack` (compare `n_tracks` in `detection_summary.json`) and the debug video looks
   equivalent.
+
+## Resolved
+
+### Footage-derived data in the public git history (resolved 2026-10-29)
+
+- **What happened:** until 2026-10-28 the GitHub repository was public and its history contained
+  data derived from the DFL development clips (correction logs with pitch positions, the golden
+  set, per-clip results) and StatsBomb-derived numbers without the logo.
+- **Done:** repository made private; the files moved to `evals/private/` (gitignored); history
+  rewritten with `git filter-branch` and force-pushed; `tests/test_publication.py` guards against
+  a repeat. A backup bundle of the old history is kept outside the repository.
+- **Decision:** GitHub still serves the old commits by hash to authenticated users until its own
+  clean-up, but GitHub Insights showed zero views and no forks while the repository was public,
+  so GitHub Support is not contacted and the repository is not replaced.
