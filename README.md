@@ -8,9 +8,9 @@ cuts a clip for every event and writes a short coaching report in Hungarian. **E
 computed by code; the language model only interprets numbers that tools return, and a validator
 rejects any report that does not.**
 
-**Live demo:** a static Hugging Face Space with tactical metrics and a validated report for the
-2018 World Cup final (StatsBomb Open Data). Link: see the repository description once it is
-published. To run the demo locally, see [Try it](#try-it).
+**Live demo:** [huggingface.co/spaces/lendvaioli/taktikai](https://huggingface.co/spaces/lendvaioli/taktikai),
+a static Hugging Face Space with tactical metrics and a validated report for the 2018 World Cup
+final (StatsBomb Open Data). To run the demo locally, see [Try it](#try-it).
 
 ## For coaches: what you get (2 minutes)
 
