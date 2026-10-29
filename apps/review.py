@@ -157,7 +157,9 @@ def main() -> None:
     match_id, video = chosen
     cfg = load_config("evals", EvalConfig)
     log = cfg.corrections_dir / f"{match_id}.jsonl"
-    events = EventsFile.model_validate_json((PROCESSED_DIR / match_id / "events.json").read_text())
+    events = EventsFile.model_validate_json(
+        (PROCESSED_DIR / match_id / "events.json").read_text(encoding="utf-8")
+    )
     merged = merge(events.events, read_log(log))
     golden = find_golden_clip(cfg.golden_dir, match_id)
     dims = load_config("pitch", PitchConfig).dims_for(match_id)

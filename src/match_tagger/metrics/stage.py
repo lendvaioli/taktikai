@@ -86,7 +86,9 @@ def compute_metrics(events: Sequence[Event], ctx: MatchContext, cfg: MetricsConf
 
 def load_events(match_dir: Path, corrections_dir: Path) -> list[Event]:
     """events.json with the review corrections of the match replayed over it."""
-    events = EventsFile.model_validate_json((match_dir / "events.json").read_text()).events
+    events = EventsFile.model_validate_json(
+        (match_dir / "events.json").read_text(encoding="utf-8")
+    ).events
     return merge(events, read_log(corrections_dir / f"{match_dir.name}.jsonl")).events
 
 

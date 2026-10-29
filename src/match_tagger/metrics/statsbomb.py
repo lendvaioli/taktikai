@@ -13,6 +13,8 @@ entry of the match in matches/<competition>/<season>.json); no network access he
   not start with a kick-off, at the first event of the new possession (as in our rules).
 - Time: match clock (minute, second plus the fraction of the timestamp); the penalty
   shoot-out (period 5) is left out.
+- Players: the nickname from lineups/<match_id>.json when there is one ("Kylian Mbappé"
+  instead of "Kylian Mbappé Lottin"), otherwise the full name.
 """
 
 from collections.abc import Iterator
@@ -59,6 +61,16 @@ def t_sec(e: Raw) -> float:
     """Match clock of an event in seconds."""
     fraction = float("0." + e["timestamp"].split(".")[1]) if "." in e["timestamp"] else 0.0
     return round(e["minute"] * 60 + e["second"] + fraction, 2)
+
+
+def nicknames(lineups: list[Raw]) -> dict[str, str]:
+    """Full player name -> nickname, for players that have one."""
+    return {
+        p["player_name"]: p["player_nickname"]
+        for team in lineups
+        for p in team["lineup"]
+        if p.get("player_nickname")
+    }
 
 
 def _base(e: Raw, team: Team, type_: str, dims: PitchDims, suffix: str = "") -> dict[str, Any]:
@@ -118,8 +130,13 @@ def _ball_losses(events: list[Raw], teams: dict[str, Team], dims: PitchDims) -> 
         prev = e
 
 
-def convert(events: list[Raw], match: Raw, dims: PitchDims = DEFAULT_DIMS) -> list[Event]:
-    """Our events of one StatsBomb match, sorted by time."""
+def convert(
+    events: list[Raw],
+    match: Raw,
+    dims: PitchDims = DEFAULT_DIMS,
+    names: dict[str, str] | None = None,
+) -> list[Event]:
+    """Our events of one StatsBomb match, sorted by time; ``names`` maps full names to nicknames."""
     teams: dict[str, Team] = {
         match["home_team"]["home_team_name"]: "home",
         match["away_team"]["away_team_name"]: "away",
@@ -134,7 +151,20 @@ def convert(events: list[Raw], match: Raw, dims: PitchDims = DEFAULT_DIMS) -> li
         elif kind == "shot":
             out.extend(_shot(e, team, dims))
     out.extend(_ball_losses(play, teams, dims))
+    out = [_renamed(ev, names or {}) for ev in out]
     return sorted(out, key=lambda ev: (ev.t_sec, ev.id))
+
+
+def _renamed(ev: Event, names: dict[str, str]) -> Event:
+    """The event with player and recipient replaced by their nicknames, where known."""
+    if not names or (ev.player not in names and ev.recipient not in names):
+        return ev
+    return ev.model_copy(
+        update={
+            "player": names.get(ev.player, ev.player),
+            "recipient": names.get(ev.recipient, ev.recipient),
+        }
+    )
 
 
 def context(

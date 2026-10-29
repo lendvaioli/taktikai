@@ -1,6 +1,6 @@
 import pytest
 
-from match_tagger.metrics.statsbomb import context, convert, point, t_sec
+from match_tagger.metrics.statsbomb import context, convert, nicknames, point, t_sec
 from match_tagger.pitch.geometry import PitchDims
 
 MATCH = {
@@ -104,3 +104,15 @@ def test_context():
     assert ctx.teams_hu == {"home": "Hazai csapat", "away": "Vendég csapat"}  # not mapped
     assert context(RAW, MATCH, {"H": "Hálóország"}).teams_hu["home"] == "Hálóország"
     assert "StatsBomb" in ctx.attribution
+
+
+def test_nicknames_replace_full_names_where_known():
+    lineups = [{"lineup": [
+        {"player_name": "H2", "player_nickname": "Kettes"},
+        {"player_name": "H9", "player_nickname": None},
+    ]}]  # fmt: skip
+    names = nicknames(lineups)
+    assert names == {"H2": "Kettes"}
+    renamed = {e.id: e for e in convert(RAW, MATCH, names=names)}
+    assert (renamed["e2"].player, renamed["e2"].recipient) == ("Kettes", "H9")
+    assert renamed["e3"].player == "H3"  # no nickname: full name kept

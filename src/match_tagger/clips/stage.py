@@ -149,13 +149,16 @@ def run_clips(video: Path, match_id: str, cfg: ClipsStageConfig) -> ClipsIndex:
     """Run the stage for the predicted events of a match; never modifies its inputs."""
     started = time.perf_counter()
     match_dir = cfg.paths.paths.processed_dir / match_id
-    events = EventsFile.model_validate_json((match_dir / "events.json").read_text()).events
+    events = EventsFile.model_validate_json(
+        (match_dir / "events.json").read_text(encoding="utf-8")
+    ).events
     meta = read_meta(video)
     out_dir, index_path = match_dir / "clips", match_dir / "clips" / "index.json"
     previous = {}
     if index_path.exists():
         previous = {
-            r.event_id: r for r in ClipsIndex.model_validate_json(index_path.read_text()).clips
+            r.event_id: r
+            for r in ClipsIndex.model_validate_json(index_path.read_text(encoding="utf-8")).clips
         }
     keys = keyframes(video, cfg.clips.ffprobe)
     records, skipped = make_clips(
@@ -175,4 +178,8 @@ def run_clips(video: Path, match_id: str, cfg: ClipsStageConfig) -> ClipsIndex:
 def load_index(match_dir: Path) -> ClipsIndex | None:
     """clips/index.json of a match, if the clips stage has run."""
     path = match_dir / "clips" / "index.json"
-    return ClipsIndex.model_validate(json.loads(path.read_text())) if path.exists() else None
+    return (
+        ClipsIndex.model_validate(json.loads(path.read_text(encoding="utf-8")))
+        if path.exists()
+        else None
+    )

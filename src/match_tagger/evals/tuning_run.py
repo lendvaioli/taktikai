@@ -92,7 +92,9 @@ def clip_pass_results(
     out = []
     for fold in folds:
         clip_id = fold.held_out
-        summary = json.loads((processed_dir / clip_id / "detection_summary.json").read_text())
+        summary = json.loads(
+            (processed_dir / clip_id / "detection_summary.json").read_text(encoding="utf-8")
+        )
         out.append(
             ClipPassResult(
                 clip_id=clip_id,

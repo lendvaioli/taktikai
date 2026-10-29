@@ -166,3 +166,17 @@ def test_compute_metrics_uses_zone_network_for_own_clips():
     assert metrics.ppda["away"].value == 2.0
     assert metrics.zone_labels_hu["final_left"] == "támadóharmad, bal sáv"
     assert compute_metrics(EVENTS, _ctx(None), MetricsConfig()).zone_labels_hu == {}
+
+
+def test_load_events_reads_utf8_names(tmp_path):
+    # Windows reads text as cp1252 unless told otherwise: "Brozović" became "BrozoviÄ‡"
+    from match_tagger.events.schema import EventsFile
+    from match_tagger.metrics.stage import load_events
+
+    events = [_ev("p1", "pass", "home", 10, 10, player="Marcelo Brozović", recipient="Luka Modrić")]
+    (tmp_path / "m").mkdir()
+    (tmp_path / "m" / "events.json").write_text(
+        EventsFile(clip_id="m", events=events).model_dump_json(), encoding="utf-8"
+    )
+    loaded = load_events(tmp_path / "m", tmp_path / "corrections")
+    assert (loaded[0].player, loaded[0].recipient) == ("Marcelo Brozović", "Luka Modrić")
