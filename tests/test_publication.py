@@ -71,7 +71,8 @@ def test_statsbomb_team_names_only_where_allowed():
 
 
 def test_space_holds_only_allowed_files_with_the_logo():
-    files = [p for p in tracked() if p.startswith("space/")]
+    # on disk, not only tracked: whatever a build leaves in space/ is what gets uploaded
+    files = [p.relative_to(ROOT).as_posix() for p in (ROOT / "space").rglob("*") if p.is_file()]
     assert [p for p in files if not SPACE_ALLOWED.match(p)] == []
     if "space/index.html" in files:
         assert LOGO in (ROOT / "space/index.html").read_text(encoding="utf-8")

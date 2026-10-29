@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install test lint eval eval-compare tune team-sheets tag review run statsbomb-list statsbomb score-reports
+.PHONY: help install test lint eval eval-compare tune team-sheets tag review run statsbomb-list statsbomb score-reports space space-serve readme
 
 help:
 	@echo "Targets: install | test | lint | eval [SET=<golden set>] | eval-compare A=<file> B=<file>"
@@ -7,6 +7,7 @@ help:
 	@echo "         run STAGE=<stage> VIDEO=<path> | MATCH=<id> [ARGS=...]"
 	@echo "         statsbomb-list [COMP=<id> SEASON=<id>] | statsbomb COMP=<id> SEASON=<id> MATCH=<id>"
 	@echo "         score-reports [ARGS='add <run_id>' | ARGS=summary]"
+	@echo "         space | space-serve | readme"
 
 install:
 	uv sync --all-extras
@@ -47,3 +48,10 @@ statsbomb:
 
 score-reports:
 	uv run python -m match_tagger.report.score $(or $(ARGS),list)
+
+space:
+	MPLBACKEND=Agg uv run python scripts/build_space.py
+
+space-serve:
+	@echo "Demo: http://127.0.0.1:8000  (Ctrl+C to stop)"
+	cd space && python -m http.server 8000 --bind 127.0.0.1

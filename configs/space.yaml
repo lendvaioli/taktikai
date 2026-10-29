@@ -1,0 +1,16 @@
+# Static Hugging Face Space (scripts/build_space.py). Publishes StatsBomb-derived aggregates and
+# one accepted report, always next to the StatsBomb logo; never raw data or per-event lists.
+match_id: sb_8658                     # data/processed/<match_id>/metrics.json (make statsbomb ...)
+run_id: 83219870eb9b                  # accepted report run (report/runs/<run_id>.json), v3.1
+title_hu: "Labdarúgó-világbajnokság 2018, döntő"
+out_dir: space
+logo_light: hudl-statsbomb-logo-black.png   # in space/assets/, from the StatsBomb media pack
+logo_dark: hudl-statsbomb-logo-white.png
+top_edges: 10                         # strongest pass-network links per team
+# Human-written note under the report: what the validator does not check, and known errors in
+# this run's text (checked by hand against metrics.json).
+report_note_hu: >-
+  Az ellenőrző a számokat és azok forrását vizsgálja, a szöveges állításokat nem. Ebben a
+  riportban a „főként jobb sávban” állítást a sávonkénti számok nem támasztják alá: a francia
+  csapat támadóharmadbeli labdavesztései közül több történt a középső sávban, mint a jobb sávban.
+repo_url: https://github.com/lendvaioli/taktikai

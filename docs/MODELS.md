@@ -34,6 +34,17 @@ StatsBomb-based analysis is published (docs/TODO.md). The test fixtures are hand
 StatsBomb data. `statsbombpy` is not used: its repository and PyPI page state no software
 licence, so the JSON files are downloaded with the standard library instead.
 
+Publication (2026-10-29): StatsBomb-derived analysis is published only in the static Hugging
+Face Space (`space/`): aggregates of one match (team counts, ball losses per third, the pressing
+proxy, shot and xG totals, the strongest pass-network links) and one accepted report, with the
+logo in the page header and footer and stamped into every chart. No raw data, `events.json` or
+per-event lists are published. Player names in the pass network are StatsBomb nicknames from
+`lineups/<match>.json` where present.
+
+| asset | source | terms | used in |
+|---|---|---|---|
+| `space/assets/hudl-statsbomb-logo-black.png`, `hudl-statsbomb-logo-white.png` | StatsBomb media pack (statsbomb.com/media-pack/, redirects to the Hudl brand portal), downloaded by the project owner on 2026-10-29 | Required by clause 1.4 of the User Agreement for any published analysis; the portal shows no separate brand guidelines without an interactive session. Used unmodified, scaled only. | Space header, footer and charts |
+
 ## Caveats for the detector weights
 
 Found while planning the detection stage (2026-10-27):
@@ -74,6 +85,7 @@ only, licence review pending; swappable via `backend` in `configs/pitch.yaml`.
 | tool | source | licence | used in |
 |------|--------|---------|---------|
 | FFmpeg / ffprobe 9.0.2 ("full" build by gyan.dev, installed with `winget install Gyan.FFmpeg`; on Kaggle/Colab from the system packages) | https://ffmpeg.org, build: https://www.gyan.dev/ffmpeg/builds/ | GPL-3.0 for this build (`--enable-gpl --enable-version3`, includes libx264); FFmpeg itself is LGPL-2.1+ without those options | clips stage: cutting (stream copy) and re-encoding event clips; reading keyframe times |
+| `hf` CLI (huggingface_hub, installed with `pip install hf` by whoever publishes) | https://github.com/huggingface/huggingface_hub | Apache-2.0 | `scripts/publish_space.sh --push`: uploads `space/` to the Hugging Face Space |
 | Ollama 0.40.12 (installed with `winget install Ollama.Ollama`) | https://github.com/ollama/ollama | MIT | report stage: serves the local LLM on 127.0.0.1:11434 (HTTP, standard library client) |
 
 TaktikAI only runs the `ffmpeg` and `ffprobe` executables that the user installed as separate

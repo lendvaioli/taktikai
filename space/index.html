@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="hu"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaktikAI – mérkőzéselemzés</title><style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;
+  color:#1d1d1f;background:#fafafa}
+main{max-width:980px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+header img{height:28px}
+h1{font-size:1.6rem;margin:8px 0}
+h2{font-size:1.2rem;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:4px}
+.card{background:#fff;border:1px solid #e3e3e3;border-radius:8px;padding:12px 16px;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{padding:6px 8px;border-bottom:1px solid #eee;text-align:right}
+th:first-child,td:first-child{text-align:left}
+img.chart{width:100%;height:auto;border:1px solid #eee;border-radius:6px;background:#fff}
+.source{color:#666;font-size:.8rem}
+.placeholder{border:2px dashed #bbb;border-radius:8px;padding:24px;text-align:center;color:#555}
+footer{margin-top:40px;font-size:.85rem;color:#555;display:flex;gap:12px;
+  align-items:center;flex-wrap:wrap}
+footer img{height:20px}
+@media (max-width:600px){h1{font-size:1.3rem}th,td{padding:4px}}
+</style></head>
+<body><main>
+<header><div><div class="source">TaktikAI · automatikus mérkőzéselemzés videóelemzőknek</div>
+<h1>Franciaország – Horvátország</h1><div>Labdarúgó-világbajnokság 2018, döntő · 95,1 perc
+· megbízhatóság: megfelelő</div></div>
+<img src="assets/hudl-statsbomb-logo-black.png" alt="Hudl StatsBomb logó"></header>
+<p>Ez a demó a TaktikAI elemzési lépéseit mutatja be egy teljes mérkőzés nyílt eseményadatain:
+a számokat kód számolja, a szöveges riportot egy helyben futó nyelvi modell írja,
+ellenőrzés mellett.</p>
+<h2>Fő mutatók</h2><div class="card"><table><thead><tr><th>Mutató</th><th>Franciaország</th><th>Horvátország</th></tr></thead><tbody><tr><td>Passzok (nyílt játékból)</td><td>249</td><td>520</td></tr><tr><td>Passzpontosság</td><td>70,3 %</td><td>81,2 %</td></tr><tr><td>Labdavesztések</td><td>51</td><td>54</td></tr><tr><td>… saját harmadban</td><td>6</td><td>2</td></tr><tr><td>… középső harmadban</td><td>16</td><td>13</td></tr><tr><td>… támadóharmadban</td><td>23</td><td>35</td></tr><tr><td>Letámadási mutató (PPDA-proxy, kisebb = erősebb letámadás)</td><td>34,1</td><td>10,05</td></tr><tr><td>Lövések</td><td>8</td><td>15</td></tr><tr><td>Gólok lövésből</td><td>3</td><td>2</td></tr><tr><td>Várható gólok (xG) összesen</td><td>1,1</td><td>1,48</td></tr></tbody></table></div>
+<h2>Ábrák</h2><img class='chart' src='assets/chart_pass_network.png' alt='Passzhálózat csapatonként'><img class='chart' src='assets/chart_ball_losses.png' alt='Labdavesztések harmadonként'>
+<h2>Edzői riport (gépi, ellenőrzött)</h2><p><strong>Mintaméret:</strong> 95,1 perc, 975 esemény (769 passz, 105 labdavesztés, 78 pontrúgás, 23 lövés). Megbízhatóság: megfelelő – egy teljes mérkőzésnyi adat.</p><div class='card'><h3>1. Magas labdavesztések a támadóharmadban</h3><p>A francia csapat magas labdavesztési arányt mutat a támadóharmadban, főként jobb sávban.</p><ul><li>labdavesztések a támadóharmadban: <strong>23</strong> <span class='source'>(forrás: get_metric(name=ball_losses_by_zone, team=home) → thirds.final.count)</span></li><li>labdavesztések aránya a támadóharmadban: <strong>0,511</strong> <span class='source'>(forrás: get_metric(name=ball_losses_by_zone, team=home) → thirds.final.share)</span></li></ul><p><strong>Edzésjavaslat:</strong> Fokozott nyomás a támadóharmadban, különösen jobb sávban, a labdavesztések csökkentésére.</p></div><div class='card'><h3>2. Kevésbé hatékony nyomás</h3><p>A francia csapat kevésbé hatékony nyomást alkalmazott, mivel magas PPDA-proxy értéke (34,1) jelezte a gyenge ellenfél passzokra való reakciót.</p><ul><li>letámadási mutató (PPDA-proxy): <strong>34,1</strong> <span class='source'>(forrás: get_metric(name=ppda, team=home) → value)</span></li><li>ellenfél passzai a saját területén: <strong>341</strong> <span class='source'>(forrás: get_metric(name=ppda, team=home) → opponent_passes)</span></li></ul><p><strong>Edzésjavaslat:</strong> A nyomás hatékonyságának javítása a saját területen, különösen a labdavesztések csökkentésére.</p></div>
+<p class="source"><strong>Megjegyzés:</strong> Az ellenőrző a számokat és azok forrását vizsgálja, a szöveges állításokat nem. Ebben a riportban a „főként jobb sávban” állítást a sávonkénti számok nem támasztják alá: a francia csapat támadóharmadbeli labdavesztései közül több történt a középső sávban, mint a jobb sávban.</p>
+<h2>Videós demó</h2><div class="placeholder">Videós demó – hamarosan, saját felvételből,
+a klub írásos
+hozzájárulásával: minitérkép, szűrhető eseménylista klipekkel és a riport.</div>
+<h2>Hogyan készült?</h2><ul><li>Minden számot kód számol (Python), a StatsBomb eseményadatokból.</li><li>A riport szövegét egy helyben futó nyílt modell írta (hf.co/Qwen/Qwen3-8B-GGUF:Q4_K_M, report_system v3.1, 4 lépés), eszközhívásokkal.</li><li>Egy ellenőrző elutasítja a riportot, ha egy szám nem szerepel az eszközök kimenetében, ha a forrásként megadott mező értéke eltér, ha egy összehasonlítás iránya hibás, vagy ha angol szó, kulcs vagy fordítatlan csapatnév marad benne.</li><li>Forráskód: <a href='https://github.com/lendvaioli/taktikai'>https://github.com/lendvaioli/taktikai</a> (AGPL-3.0).</li></ul>
+<footer><img src="assets/hudl-statsbomb-logo-black.png" alt="Hudl StatsBomb logó"><span>Adatforrás: StatsBomb Open Data (github.com/statsbomb/open-data).
+Az adatok kutatási és nem kereskedelmi célra használhatók; a nyers adatokat ez az oldal nem
+tartalmazza.</span></footer>
+</main></body></html>
